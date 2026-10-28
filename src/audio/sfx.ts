@@ -1,6 +1,25 @@
 import { filter, gain, noiseBurst, noiseBuffer, rand, tone } from "./nodes";
 
-export const SFX = ["click", "switch", "chime", "pour", "sip", "drawer", "window"] as const;
+/** A soft swell of filtered noise: sheets, fabric, curtains. */
+function swish(ctx: AudioContext, out: AudioNode, opts: { t?: number; from: number; to: number; peak: number; attack: number; length: number; color?: "white" | "pink" | "brown" }) {
+  const t = opts.t ?? ctx.currentTime;
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer(ctx, opts.color ?? "pink");
+  const bp = filter(ctx, "bandpass", opts.from, 0.9);
+  bp.frequency.setValueAtTime(opts.from, t);
+  bp.frequency.exponentialRampToValueAtTime(opts.to, t + opts.length);
+  const g = gain(ctx, 0);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(opts.peak, t + opts.attack);
+  g.gain.linearRampToValueAtTime(0, t + opts.length);
+  const p = ctx.createStereoPanner();
+  p.pan.value = rand(-0.5, 0.5);
+  src.connect(bp).connect(g).connect(p).connect(out);
+  src.start(t, Math.random() * 3);
+  src.stop(t + opts.length + 0.05);
+}
+
+export const SFX = ["click", "switch", "chime", "pour", "sip", "drawer", "window", "rustle", "flop", "curtain", "tap", "chair"] as const;
 export type SfxId = (typeof SFX)[number];
 
 /** One-shot UI and room sounds, synthesized so Phase 1 ships without audio files. */
@@ -56,6 +75,37 @@ export function playSfx(ctx: AudioContext, out: AudioNode, id: SfxId): void {
       src.start(t);
       src.stop(t + 0.4);
       tone(ctx, out, { t: t + 0.3, freq: 95, peak: 0.3, decay: 0.12 });
+      break;
+    }
+    case "rustle":
+      swish(ctx, out, { from: rand(1500, 2400), to: rand(2400, 3600), peak: rand(0.05, 0.1), attack: 0.09, length: rand(0.3, 0.5) });
+      break;
+    case "flop":
+      noiseBurst(ctx, out, { type: "lowpass", freq: 260, peak: 0.5, decay: 0.25, color: "brown" });
+      swish(ctx, out, { t: t + 0.05, from: 1200, to: 3000, peak: 0.14, attack: 0.12, length: 0.8 });
+      swish(ctx, out, { t: t + 0.6, from: 2200, to: 1600, peak: 0.07, attack: 0.1, length: 0.5 });
+      break;
+    case "curtain":
+      swish(ctx, out, { from: 700, to: 2600, peak: 0.12, attack: 0.15, length: 0.7, color: "white" });
+      for (let i = 0; i < 4; i++) tone(ctx, out, { t: t + 0.05 + i * 0.09, freq: rand(2800, 3400), peak: 0.03, decay: 0.05 });
+      break;
+    case "tap":
+      tone(ctx, out, { freq: 2600, peak: 0.05, decay: 0.03 });
+      tone(ctx, out, { t: t + 0.06, freq: 3300, peak: 0.04, decay: 0.05 });
+      break;
+    case "chair": {
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(110, t);
+      osc.frequency.linearRampToValueAtTime(150, t + 0.22);
+      const bp = filter(ctx, "bandpass", 600, 5);
+      const g = gain(ctx, 0);
+      g.gain.linearRampToValueAtTime(0.04, t + 0.04);
+      g.gain.linearRampToValueAtTime(0, t + 0.25);
+      osc.connect(bp).connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.3);
+      noiseBurst(ctx, out, { t: t + 0.22, type: "lowpass", freq: 300, peak: 0.25, decay: 0.12, color: "brown" });
       break;
     }
     case "window": {

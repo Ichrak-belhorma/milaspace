@@ -107,7 +107,8 @@ test("room objects work from the keyboard object bar", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(win).toBeHidden();
 
-  await bar.getByRole("button", { name: "Bring a coffee" }).click();
+  await bar.getByRole("button", { name: "Make a drink" }).click();
+  await page.getByRole("region", { name: "What are you drinking?" }).getByRole("button", { name: "Matcha latte" }).click();
   await expect(bar.getByRole("button", { name: "Take a sip" })).toBeVisible();
   await bar.getByRole("button", { name: "Spin the fidget spinner" }).click();
   await page.waitForTimeout(1200);

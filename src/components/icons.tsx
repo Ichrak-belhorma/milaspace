@@ -201,6 +201,56 @@ export const CheckIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const CurtainsIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3 3h18M5 3c0 6 2 12 4 18H5V3ZM19 3c0 6-2 12-4 18h4V3Z" />
+  </Icon>
+);
+export const FrameIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="4" y="3" width="16" height="18" rx="1" />
+    <path d="M7 17l3.5-4 2.5 3 2-2 2 3" />
+    <circle cx="9" cy="8" r="1.5" />
+  </Icon>
+);
+export const ChairIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M7 3h10v8H7zM5 11h14v3H5zM7 14v7M17 14v7" />
+  </Icon>
+);
+export const PhoneIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+    <path d="M11 18.5h2" />
+  </Icon>
+);
+export const BedIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3 18V6M3 14h18v4M21 18v-4a3 3 0 0 0-3-3h-8v3" />
+    <circle cx="6.5" cy="11" r="1.6" />
+  </Icon>
+);
+export const ImageIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M3 16l5-5 4 4 3-3 6 6" />
+    <circle cx="15.5" cy="8.5" r="1.5" />
+  </Icon>
+);
+export const StandIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="4.5" r="2" />
+    <path d="M12 7v7M8 10l4-2 4 2M9.5 21l2.5-7 2.5 7" />
+  </Icon>
+);
+
+export const UserIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </Icon>
+);
+
 export function MilaMark({ size = 26 }: { size?: number }) {
   // A tiny desk lamp over a book: the Mila mark.
   return (

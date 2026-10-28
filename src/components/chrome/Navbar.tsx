@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { GlassSurface } from "@/components/glass/GlassSurface";
-import { LaptopIcon, MilaMark, MusicIcon, NotebookIcon, PaletteIcon, PauseIcon, PlayIcon } from "@/components/icons";
+import { LaptopIcon, MilaMark, MusicIcon, NotebookIcon, PaletteIcon, PauseIcon, PlayIcon, UserIcon } from "@/components/icons";
+import { useAuthStore } from "@/stores/auth";
 import { useNow } from "@/hooks/useNow";
 import { useTimerStore } from "@/stores/timer";
 import { useUiStore, type PanelId } from "@/stores/ui";
@@ -36,10 +37,23 @@ function TimerChip() {
   );
 }
 
+function AccountButton({ expanded, onClick }: { expanded: boolean; onClick: () => void }) {
+  const status = useAuthStore((s) => s.status);
+  const sync = useAuthStore((s) => s.sync.state);
+  const signedIn = status === "signed-in";
+  const label = signedIn ? (sync === "error" || sync === "setup-needed" ? "Account (sync needs attention)" : "Account (signed in)") : "Account and sync";
+  return (
+    <button type="button" className="btn btn-icon relative" aria-expanded={expanded} onClick={onClick} aria-label={label} title={label}>
+      <UserIcon size={18} />
+      {signedIn && <span aria-hidden className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${sync === "error" || sync === "setup-needed" ? "bg-accent-2" : "bg-accent"}`} />}
+    </button>
+  );
+}
+
 /** The floating glass navbar with the theme's ornamental edge. */
 export function Navbar() {
   const panel = useUiStore((s) => s.panel);
-  const view = useUiStore((s) => s.view);
+  const studying = useUiStore((s) => s.focus === "laptop");
   const { togglePanel, openLaptop, closeLaptop } = useUiStore.getState();
   const panelButton = (id: PanelId) => ({ "aria-expanded": panel === id, onClick: () => togglePanel(id) });
 
@@ -49,17 +63,18 @@ export function Navbar() {
         <a href="#object-bar" className="sr-only-focusable btn btn-soft absolute left-2 z-10 text-sm">
           Skip to room objects
         </a>
-        <span className="flex items-center gap-2 pr-1">
+        <span className="flex items-center gap-2 pr-1" aria-label="Mila">
           <MilaMark />
-          <span className="font-display text-xl tracking-wide">Mila</span>
+          <span className="hidden font-display text-xl tracking-wide min-[440px]:inline">Mila</span>
         </span>
         <div className="flex flex-1 items-center justify-center gap-0.5 sm:gap-1">
-          <NavButton icon={<LaptopIcon size={18} />} label="Study" aria-pressed={view === "laptop"} onClick={() => (view === "laptop" ? closeLaptop() : openLaptop())} />
+          <NavButton icon={<LaptopIcon size={18} />} label="Study" aria-pressed={studying} onClick={() => (studying ? closeLaptop() : openLaptop())} />
           <NavButton icon={<NotebookIcon size={18} />} label="Today" {...panelButton("notebook")} />
           <NavButton icon={<MusicIcon size={18} />} label="Ambience" {...panelButton("ambience")} />
           <NavButton icon={<PaletteIcon size={18} />} label="Theme" {...panelButton("theme")} />
         </div>
         <TimerChip />
+        <AccountButton expanded={panel === "account"} onClick={() => togglePanel("account")} />
       </GlassSurface>
     </header>
   );

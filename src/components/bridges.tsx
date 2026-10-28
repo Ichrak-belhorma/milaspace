@@ -61,6 +61,7 @@ function snapshot(): AudioSnapshot {
     layers: a.layers,
     weather: room.window.weather,
     windowOpen: room.window.open,
+    curtainsClosed: room.curtainsClosed,
     weatherVolume: a.weatherVolume,
     sfxVolume: a.sfxVolume,
     music: { playing: a.music.playing, volume: a.music.volume, key: a.music.trackId, spec },
@@ -79,13 +80,23 @@ export function AudioBridge() {
     push();
     const unsubAudio = useAudioStore.subscribe(push);
     const unsubRoom = useRoomStore.subscribe((s, prev) => {
-      if (s.window !== prev.window) push();
+      if (s.window !== prev.window || s.curtainsClosed !== prev.curtainsClosed) push();
       if (s.lamp.on !== prev.lamp.on) audioEngine.sfx("switch");
       if (s.window.open !== prev.window.open) audioEngine.sfx("window");
+      if (s.curtainsClosed !== prev.curtainsClosed) audioEngine.sfx("curtain");
       if (s.drawerOpen !== prev.drawerOpen) audioEngine.sfx("drawer");
       if (s.fidgetClicks !== prev.fidgetClicks) audioEngine.sfx("click");
-      if (s.coffee.present && !prev.coffee.present) audioEngine.sfx("pour");
-      else if (s.coffee.sipsLeft < prev.coffee.sipsLeft) audioEngine.sfx("sip");
+      if (s.phone.faceDown !== prev.phone.faceDown) audioEngine.sfx("tap");
+      if (s.drink.madeAt !== prev.drink.madeAt && s.drink.kind) audioEngine.sfx("pour");
+      else if (s.drink.sipsLeft < prev.drink.sipsLeft) audioEngine.sfx("sip");
+    });
+    const unsubUi = useUiStore.subscribe((s, prev) => {
+      if (s.pose !== prev.pose) {
+        if (s.pose === "lying") audioEngine.sfx("flop");
+        else if (s.pose === "seated") audioEngine.sfx("chair");
+        else if (prev.pose === "lying") audioEngine.sfx("rustle");
+      }
+      if (s.inspect === "phone" && prev.inspect !== "phone") audioEngine.sfx("tap");
     });
     const unsubTimer = useTimerStore.subscribe((s, prev) => {
       if (s.finishedCount > prev.finishedCount && s.settings.chime) audioEngine.sfx("chime");
@@ -104,6 +115,7 @@ export function AudioBridge() {
       window.removeEventListener("keydown", unlock, { capture: true });
       unsubAudio();
       unsubRoom();
+      unsubUi();
       unsubTimer();
       audioEngine.setOnTrackEnded(null);
     };

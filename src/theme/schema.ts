@@ -66,6 +66,8 @@ export const themeSchema = z.object({
   id: z.string().min(1).max(64),
   name: z.string().trim().min(1).max(48),
   basedOn: z.string().max(64).optional(),
+  /** Last save, for sync. */
+  updatedAt: z.number().optional(),
   tokens: themeTokensSchema,
   room: roomThemeSchema,
 });

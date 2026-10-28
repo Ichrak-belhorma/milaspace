@@ -333,3 +333,123 @@ html[data-motion="reduce"] *::after {
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+/* ---------- Sleep: eyelids and ZZZs ---------- */
+:root {
+  /* Eyelids are near-black, tinted by the theme's shadow; the inner edge glows faintly red (light through skin). */
+  --mila-lid: color-mix(in srgb, var(--mila-shadow-color) 30%, #050308);
+  --mila-lid-edge: color-mix(in srgb, var(--mila-lid) 72%, #6b2a1e);
+}
+
+.sleep__lid {
+  position: fixed;
+  left: -10vw;
+  right: -10vw;
+  height: 58vh;
+  z-index: 10;
+  pointer-events: none;
+  filter: blur(14px);
+  transition: transform 1.8s cubic-bezier(0.45, 0, 0.2, 1);
+}
+.sleep__lid--top {
+  top: -14vh;
+  border-radius: 0 0 50% 50% / 0 0 32% 32%;
+  background: linear-gradient(to bottom, var(--mila-lid) 0%, var(--mila-lid) 78%, var(--mila-lid-edge) 100%);
+  transform: translateY(-110%);
+}
+.sleep__lid--bottom {
+  bottom: -14vh;
+  border-radius: 50% 50% 0 0 / 32% 32% 0 0;
+  background: linear-gradient(to top, var(--mila-lid) 0%, var(--mila-lid) 78%, var(--mila-lid-edge) 100%);
+  transform: translateY(110%);
+}
+/* Closed: a slit of roughly 12vh stays open in the middle. */
+.sleep[data-closed] .sleep__lid--top {
+  transform: translateY(0);
+  animation: mila-breathe-top 6s ease-in-out 1.8s infinite;
+}
+.sleep[data-closed] .sleep__lid--bottom {
+  transform: translateY(0);
+  animation: mila-breathe-bottom 6s ease-in-out 1.8s infinite;
+}
+@keyframes mila-breathe-top {
+  50% {
+    transform: translateY(1.6vh);
+  }
+}
+@keyframes mila-breathe-bottom {
+  50% {
+    transform: translateY(-1.6vh);
+  }
+}
+
+.sleep__zzz {
+  position: fixed;
+  left: 50%;
+  bottom: 12vh;
+  z-index: 15;
+  pointer-events: none;
+  font-family: var(--mila-font-display);
+  font-weight: 700;
+  color: color-mix(in srgb, var(--mila-highlight) 88%, transparent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--mila-glow-color) 60%, transparent);
+}
+.sleep__zzz span {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  font-size: 2rem;
+  opacity: 0;
+  animation: mila-zzz 4.8s ease-out infinite;
+}
+.sleep__zzz span:nth-child(2) {
+  animation-delay: 1.6s;
+}
+.sleep__zzz span:nth-child(3) {
+  animation-delay: 3.2s;
+}
+@keyframes mila-zzz {
+  0% {
+    transform: translate(0, 0) scale(0.5) rotate(-8deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(9vh, -46vh) scale(1.6) rotate(12deg);
+    opacity: 0;
+  }
+}
+/* Reduced motion: lids still close (that is the point) but instantly; ZZZs sit still. */
+html[data-motion="reduce"] .sleep__zzz span {
+  animation: none;
+  opacity: 0.85;
+}
+html[data-motion="reduce"] .sleep__zzz span:nth-child(2) {
+  transform: translate(3vh, -6vh) scale(1.2);
+}
+html[data-motion="reduce"] .sleep__zzz span:nth-child(3) {
+  transform: translate(6vh, -12vh) scale(1.5);
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion="full"]) .sleep__zzz span {
+    animation: none;
+    opacity: 0.85;
+  }
+  html:not([data-motion="full"]) .sleep__zzz span:nth-child(2) {
+    transform: translate(3vh, -6vh) scale(1.2);
+  }
+  html:not([data-motion="full"]) .sleep__zzz span:nth-child(3) {
+    transform: translate(6vh, -12vh) scale(1.5);
+  }
+}
+
+/* While asleep the HUD fades back; hovering or focusing any part brings it back. */
+.hud[data-sleeping] :is(header, main > div) {
+  opacity: 0.12;
+  transition: opacity 0.6s ease;
+}
+.hud[data-sleeping] :is(header, main > div):is(:hover, :focus-within) {
+  opacity: 1;
+}

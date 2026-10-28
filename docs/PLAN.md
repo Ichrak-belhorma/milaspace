@@ -1,6 +1,9 @@
 # Mila — Implementation Plan
 
-Status: **Phase 1 complete** (approved 2026-10-28). Phase 2 next; it needs Supabase and Anthropic keys.
+Status: **Phase 1 complete**, plus room additions (sit at the desk with close-ups, bed with look-around and sleep,
+nightstand phone, drink choice, custom painting, curtains). **Phase 2 complete except AI**: Supabase auth and sync,
+modules, curriculum editor (outline import), backward planner, daily tasks, FSRS flashcards. The AI routes
+(`/api/ai/curriculum`, `/api/ai/flashcards`) validate input and return 501 until the model integration lands.
 
 ## Stack (pinned at current stable)
 
@@ -74,12 +77,14 @@ tests/e2e/             Playwright smoke + per-preset screenshots
 ## Data model (Supabase Postgres, RLS on every table)
 
 Static catalogs (decor items, presets, audio) live in code registries; the DB stores only user state.
+Ids are generated on the device (local-first), so user tables use `(user_id, id)` primary keys. Generated plan
+tasks are not stored; only task history (done/skipped) and manual tasks are.
 
 | Table | Key columns | Phase |
 |---|---|---|
-| `profiles` | id (=auth.users), username, display_name, avatar_url, bio, active_theme_id, showcase jsonb, is_public | 2 (public fields used in 4) |
+| `profiles` | id (=auth.users), username, display_name, avatar_url, bio, active_theme jsonb, settings jsonb (timer, audio, motion), showcase jsonb, is_public | 2 (public fields used in 4) |
 | `themes` | id, owner_id, name, tokens jsonb, room jsonb, is_public, forked_from, likes_count | 2 (sharing in 4) |
-| `room_state` | user_id PK, slots jsonb (slot → item_id/polaroid_id), prefs jsonb (lamp, weather, ambience) | 2 |
+| `room_state` | user_id PK, state jsonb (lamp, window, curtains, drink, phone), painting_path, slots jsonb | 2 |
 | `modules` | id, user_id, name, exam_date?, target_grade?, syllabus_text?, syllabus_path?, color, daily_minutes? | 2 |
 | `curriculum_nodes` | id, module_id, parent_id, kind (chapter/concept/skill), title, position, content_type (memorize/math/coding/conceptual), est_minutes, mastery 0–1, user_edited | 2 |
 | `study_tasks` | id, user_id, module_id, node_id?, date, kind (learn/review/flashcards/practice/buffer), est_minutes, status (todo/done/skipped), source (auto/manual), completed_at | 2 |
@@ -88,6 +93,7 @@ Static catalogs (decor items, presets, audio) live in code registries; the DB st
 | `practice_items` | id, module_id, node_id, kind (math/coding), prompt, solution_steps jsonb, language?, starter_code?, tests jsonb | 3 |
 | `practice_attempts` | id, user_id, item_id, correct, score, created_at | 3 |
 | `focus_sessions` | id, user_id, module_id?, started_at, ended_at, focus_minutes, completed | 2 (currency in 3) |
+| `todos` | id, user_id, text, done, day, created_at, done_at, updated_at (the notebook's own to-dos) | 2 |
 | `currency_ledger` | id, user_id, delta, reason (focus/purchase/bonus), ref_id, created_at (balance = sum; written only server-side) | 3 |
 | `user_items` | user_id, item_id, acquired_at | 3 |
 | `polaroids` | id, user_id, storage_path, caption, created_at (Storage bucket `polaroids`) | 3 |

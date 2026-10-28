@@ -9,6 +9,7 @@ export type AudioSnapshot = {
   layers: Record<AmbientLayerId, number>;
   weather: Weather;
   windowOpen: boolean;
+  curtainsClosed: boolean;
   weatherVolume: number;
   sfxVolume: number;
   music: { playing: boolean; volume: number; key: string; spec: SoundSpec | null };
@@ -79,9 +80,10 @@ class AudioEngine {
       this.drive(this.layers.get(id)!, v > 0 ? id : null, AMBIENT_LAYERS[id].sound, curve(v));
     }
 
-    // Closed window: quieter and muffled. Open: full and bright.
-    this.weatherFilter.frequency.setTargetAtTime(s.windowOpen ? 14000 : 900, now, 0.25);
-    const weatherLevel = curve(s.weatherVolume) * (s.windowOpen ? 1 : 0.45);
+    // Closed window: quieter and muffled. Open: full and bright. Drawn curtains soften either.
+    const cutoff = s.windowOpen ? (s.curtainsClosed ? 3500 : 14000) : s.curtainsClosed ? 650 : 900;
+    this.weatherFilter.frequency.setTargetAtTime(cutoff, now, 0.25);
+    const weatherLevel = curve(s.weatherVolume) * (s.windowOpen ? 1 : 0.45) * (s.curtainsClosed ? 0.65 : 1);
     this.drive(this.weatherSlot, s.weatherVolume > 0 ? s.weather : null, WEATHER_SOUNDS[s.weather], weatherLevel);
 
     const m = s.music;

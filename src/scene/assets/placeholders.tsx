@@ -9,7 +9,7 @@
 import { RoundedBox } from "@react-three/drei";
 import { useMemo } from "react";
 import { DoubleSide, PlaneGeometry } from "three";
-import { DESK, ROOM, WINDOW } from "../layout";
+import { DESK, DOOR, NIGHTSTAND, ROOM, WINDOW } from "../layout";
 import { highlight, Rod, useHighlightColor, useRoomColors } from "../materials";
 import { FIXED } from "../palette";
 import { fabricTexture, planksTexture, wallpaperTexture } from "../textures";
@@ -85,6 +85,9 @@ export function RoomShell() {
         <planeGeometry args={[hw * 2, depth]} />
         <meshStandardMaterial color={c.trim} roughness={1} />
       </mesh>
+      {/* Front wall with a door. One-sided planes facing into the room, so a camera that steps back
+          past the wall on narrow screens still sees through it. */}
+      <FrontWall />
       {/* Baseboards */}
       <mesh position={[0, 0.05, backZ + 0.01]}>
         <boxGeometry args={[hw * 2, 0.1, 0.02]} />
@@ -97,6 +100,35 @@ export function RoomShell() {
       <mesh position={[hw - 0.01, 0.05, backZ + depth / 2]}>
         <boxGeometry args={[0.02, 0.1, depth]} />
         <meshStandardMaterial color={c.trim} roughness={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
+function FrontWall() {
+  const c = useRoomColors();
+  const { halfWidth: hw, frontZ: z, height: h } = ROOM;
+  const left = DOOR.x - DOOR.width / 2;
+  const right = DOOR.x + DOOR.width / 2;
+  const face = (x0: number, x1: number, y0: number, y1: number, color: string, dz = 0, key?: string) => (
+    <mesh key={key} position={[(x0 + x1) / 2, (y0 + y1) / 2, z - dz]} rotation-y={Math.PI}>
+      <planeGeometry args={[x1 - x0, y1 - y0]} />
+      <meshStandardMaterial color={color} roughness={0.9} />
+    </mesh>
+  );
+  return (
+    <group>
+      {face(-hw, left, 0, h, c.wall)}
+      {face(right, hw, 0, h, c.wall)}
+      {face(left, right, DOOR.height, h, c.wall)}
+      {face(left - 0.06, left, 0, DOOR.height + 0.06, c.trim, 0.012)}
+      {face(right, right + 0.06, 0, DOOR.height + 0.06, c.trim, 0.012)}
+      {face(left, right, DOOR.height, DOOR.height + 0.06, c.trim, 0.012)}
+      {face(left, right, 0, DOOR.height, c.wood, 0.004)}
+      {[0.35, 1.25].map((y) => face(left + 0.12, right - 0.12, y, y + 0.6, c.trim, 0.008, String(y)))}
+      <mesh position={[left + 0.12, 1.0, z - 0.012]} rotation-y={Math.PI}>
+        <circleGeometry args={[0.035, 20]} />
+        <meshStandardMaterial color={c.metal} metalness={0.7} roughness={0.3} />
       </mesh>
     </group>
   );
@@ -197,8 +229,9 @@ export function DrawerBox({ highlight: hl }: PlaceholderProps) {
   );
 }
 
-export function Bed() {
+export function Bed({ highlight: hl }: PlaceholderProps) {
   const c = useRoomColors();
+  const glow = useHighlightColor();
   const fabric = useMemo(() => {
     const t = fabricTexture().clone();
     t.repeat.set(4, 4);
@@ -214,7 +247,7 @@ export function Bed() {
         <meshStandardMaterial color={c.paper} roughness={0.95} />
       </RoundedBox>
       <RoundedBox args={[1.32, 0.12, 1.25]} radius={0.05} position={[0, 0.42, 0.33]} castShadow receiveShadow>
-        <meshStandardMaterial color={c.fabric} map={fabric} roughness={1} />
+        <meshStandardMaterial color={c.fabric} map={fabric} roughness={1} {...highlight(hl, glow)} />
       </RoundedBox>
       <RoundedBox args={[0.9, 0.12, 0.32]} radius={0.06} position={[0, 0.5, -0.7]} rotation-x={-0.25} castShadow>
         <meshStandardMaterial color={c.paper} roughness={1} />
@@ -384,25 +417,47 @@ export function LaptopLid({ highlight: hl }: PlaceholderProps) {
   );
 }
 
-export function NotebookModel({ highlight: hl }: PlaceholderProps) {
+/** Notebook back cover, pages and pen. The page's top face is at NOTEBOOK.pageTop. */
+export const NOTEBOOK = { width: 0.2, depth: 0.27, pageTop: 0.0205 };
+
+export function NotebookBase({ highlight: hl }: PlaceholderProps) {
   const c = useRoomColors();
   const glow = useHighlightColor();
   return (
     <group>
-      <RoundedBox args={[0.2, 0.022, 0.27]} radius={0.004} position={[0, 0.011, 0]} castShadow>
+      <mesh position={[0, 0.002, 0]} castShadow>
+        <boxGeometry args={[NOTEBOOK.width, 0.004, NOTEBOOK.depth]} />
         <meshStandardMaterial color={c.decor} roughness={0.7} {...highlight(hl, glow)} />
-      </RoundedBox>
-      <mesh position={[0.004, 0.011, 0]}>
-        <boxGeometry args={[0.196, 0.016, 0.262]} />
-        <meshStandardMaterial color={c.paper} roughness={1} />
       </mesh>
-      <mesh position={[0.07, 0.0115, 0]}>
-        <boxGeometry args={[0.012, 0.0235, 0.272]} />
-        <meshStandardMaterial color={c.metal} roughness={0.6} />
+      <mesh position={[0.002, 0.012, 0]} castShadow>
+        <boxGeometry args={[NOTEBOOK.width - 0.006, 0.017, NOTEBOOK.depth - 0.008]} />
+        <meshStandardMaterial color={c.paper} roughness={1} />
       </mesh>
       <Rod from={[0.125, 0.008, -0.1]} to={[0.13, 0.008, 0.1]} radius={0.006}>
         <meshStandardMaterial color={c.metal} metalness={0.5} roughness={0.4} />
       </Rod>
+    </group>
+  );
+}
+
+/** Front cover, hinged at x=0 (the spine) and extending along +x; its underside is the inside page. */
+export function NotebookCover({ highlight: hl }: PlaceholderProps) {
+  const c = useRoomColors();
+  const glow = useHighlightColor();
+  return (
+    <group>
+      <mesh position={[NOTEBOOK.width / 2, 0.002, 0]} castShadow>
+        <boxGeometry args={[NOTEBOOK.width, 0.004, NOTEBOOK.depth]} />
+        <meshStandardMaterial color={c.decor} roughness={0.7} {...highlight(hl, glow)} />
+      </mesh>
+      <mesh position={[NOTEBOOK.width / 2, -0.0005, 0]} rotation-x={Math.PI / 2}>
+        <planeGeometry args={[NOTEBOOK.width - 0.008, NOTEBOOK.depth - 0.008]} />
+        <meshStandardMaterial color={c.paper} roughness={1} />
+      </mesh>
+      <mesh position={[NOTEBOOK.width - 0.03, 0.0045, 0]}>
+        <boxGeometry args={[0.012, 0.001, NOTEBOOK.depth + 0.002]} />
+        <meshStandardMaterial color={c.metal} roughness={0.6} />
+      </mesh>
     </group>
   );
 }
@@ -425,6 +480,16 @@ export function MugModel({ highlight: hl }: PlaceholderProps) {
         <meshStandardMaterial color={c.decor} roughness={0.4} {...highlight(hl, glow)} />
       </mesh>
     </group>
+  );
+}
+
+export function GlassModel({ highlight: hl }: PlaceholderProps) {
+  const glow = useHighlightColor();
+  return (
+    <mesh position={[0, 0.06, 0]} castShadow>
+      <cylinderGeometry args={[0.036, 0.031, 0.12, 24, 1, true]} />
+      <meshStandardMaterial color={FIXED.glass} transparent opacity={0.28} roughness={0.05} side={DoubleSide} depthWrite={false} {...highlight(hl, glow)} />
+    </mesh>
   );
 }
 
@@ -578,10 +643,21 @@ function wavyPlane(width: number, height: number): PlaneGeometry {
   return g;
 }
 
-export function Curtains() {
+export function CurtainRod() {
   const c = useRoomColors();
-  const geometry = useMemo(() => wavyPlane(0.32, 1.65), []);
   const { width: w, height: h } = WINDOW;
+  return (
+    <Rod from={[-w / 2 - 0.35, h / 2 + 0.16, 0]} to={[w / 2 + 0.35, h / 2 + 0.16, 0]} radius={0.012}>
+      <meshStandardMaterial color={c.metal} metalness={0.6} roughness={0.35} />
+    </Rod>
+  );
+}
+
+/** One curtain panel, 0.32m wide when gathered; the Window object stretches it in x to close. */
+export function CurtainPanel({ highlight: hl }: PlaceholderProps) {
+  const c = useRoomColors();
+  const glow = useHighlightColor();
+  const geometry = useMemo(() => wavyPlane(0.32, 1.65), []);
   const fabric = useMemo(() => {
     const t = fabricTexture().clone();
     t.repeat.set(2, 6);
@@ -589,15 +665,87 @@ export function Curtains() {
     return t;
   }, []);
   return (
-    <group position={[0, 0, 0.12]}>
-      <Rod from={[-w / 2 - 0.35, h / 2 + 0.16, 0]} to={[w / 2 + 0.35, h / 2 + 0.16, 0]} radius={0.012}>
-        <meshStandardMaterial color={c.metal} metalness={0.6} roughness={0.35} />
-      </Rod>
-      {[-1, 1].map((s) => (
-        <mesh key={s} geometry={geometry} position={[s * (w / 2 + 0.17), h / 2 + 0.16 - 0.825, 0]} castShadow>
-          <meshStandardMaterial color={c.fabric} map={fabric} roughness={1} side={DoubleSide} />
+    <mesh geometry={geometry} castShadow>
+      <meshStandardMaterial color={c.fabric} map={fabric} roughness={1} side={DoubleSide} {...highlight(hl, glow)} />
+    </mesh>
+  );
+}
+
+/* ---------- Bedside ---------- */
+
+export function Chair({ highlight: hl }: PlaceholderProps) {
+  const c = useRoomColors();
+  const glow = useHighlightColor();
+  const legs: [number, number][] = [
+    [-0.19, -0.18],
+    [0.19, -0.18],
+    [-0.19, 0.18],
+    [0.19, 0.18],
+  ];
+  return (
+    <group>
+      <RoundedBox args={[0.44, 0.05, 0.42]} radius={0.02} position={[0, 0.46, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={c.fabric} roughness={0.95} {...highlight(hl, glow)} />
+      </RoundedBox>
+      {legs.map(([x, z]) => (
+        <mesh key={`${x}${z}`} position={[x, 0.22, z]} castShadow>
+          <cylinderGeometry args={[0.016, 0.014, 0.44, 10]} />
+          <meshStandardMaterial color={c.wood} roughness={0.7} />
+        </mesh>
+      ))}
+      {[-0.17, 0.17].map((x) => (
+        <mesh key={x} position={[x, 0.62, 0.19]} castShadow>
+          <boxGeometry args={[0.03, 0.3, 0.03]} />
+          <meshStandardMaterial color={c.wood} roughness={0.7} />
+        </mesh>
+      ))}
+      <RoundedBox args={[0.42, 0.14, 0.035]} radius={0.015} position={[0, 0.78, 0.2]} castShadow>
+        <meshStandardMaterial color={c.wood} roughness={0.7} {...highlight(hl, glow)} />
+      </RoundedBox>
+    </group>
+  );
+}
+
+export function Nightstand() {
+  const c = useRoomColors();
+  const { width: w, depth: d, height: h } = NIGHTSTAND;
+  return (
+    <group>
+      <mesh position={[0, h / 2 - 0.012, 0]} castShadow receiveShadow>
+        <boxGeometry args={[w - 0.02, h - 0.024, d - 0.02]} />
+        <meshStandardMaterial color={c.wood} roughness={0.7} />
+      </mesh>
+      <RoundedBox args={[w, 0.025, d]} radius={0.008} position={[0, h - 0.0125, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={c.wood} roughness={0.6} />
+      </RoundedBox>
+      <mesh position={[0, h * 0.68, d / 2 - 0.008]}>
+        <boxGeometry args={[w - 0.06, 0.13, 0.006]} />
+        <meshStandardMaterial color={c.trim} roughness={0.6} />
+      </mesh>
+      <mesh position={[0, h * 0.68, d / 2 + 0.004]}>
+        <sphereGeometry args={[0.011, 12, 12]} />
+        <meshStandardMaterial color={c.metal} metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* A small stack of books */}
+      {[0, 1].map((i) => (
+        <mesh key={i} position={[0.06, h + 0.012 + i * 0.024, -0.05]} rotation-y={0.2 + i * 0.3} castShadow>
+          <boxGeometry args={[0.15, 0.022, 0.11]} />
+          <meshStandardMaterial color={i ? c.fabric : c.decor} roughness={0.8} />
         </mesh>
       ))}
     </group>
   );
 }
+
+export const PHONE = { width: 0.072, depth: 0.15, thickness: 0.008 };
+
+/** Phone body; the Phone object adds the screen. Origin at the bottom center. */
+export function PhoneBody({ highlight: hl }: PlaceholderProps) {
+  const glow = useHighlightColor();
+  return (
+    <RoundedBox args={[PHONE.width, PHONE.thickness, PHONE.depth]} radius={0.003} position={[0, PHONE.thickness / 2, 0]} castShadow>
+      <meshStandardMaterial color={FIXED.bezel} metalness={0.4} roughness={0.35} {...highlight(hl, glow)} />
+    </RoundedBox>
+  );
+}
+

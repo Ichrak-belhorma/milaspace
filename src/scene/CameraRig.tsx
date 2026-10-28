@@ -2,21 +2,28 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { Vector3 } from "three";
+import { Spherical, Vector3 } from "three";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useUiStore } from "@/stores/ui";
-import { CAMERA } from "./layout";
+import { FRAMINGS, type Framing } from "./layout";
+
+/** Map a pointer coordinate in [-1, 1] onto an asymmetric [min, max] range (0 stays 0). */
+function range(p: number, [min, max]: [number, number]): number {
+  return p >= 0 ? p * max : -p * min;
+}
 
 /**
- * Fixed-camera diorama with gentle parallax. The pointer is tracked on window (not the canvas)
- * so parallax keeps working over the glass UI without letting UI clicks reach the 3D scene.
+ * Camera for the diorama. Standing: gentle parallax. Seated, in bed and in close-ups: the pointer
+ * turns your head. The pointer is tracked on window (not the canvas) so it keeps working over the
+ * glass UI without letting UI clicks reach the 3D scene.
  */
 export function CameraRig() {
-  const view = useUiStore((s) => s.view);
+  const pose = useUiStore((s) => s.pose);
+  const focus = useUiStore((s) => s.focus);
   const reduced = useReducedMotion();
   const pointer = useRef({ x: 0, y: 0 });
-  const look = useRef(new Vector3(...CAMERA.room.target));
-  const goal = useRef({ position: new Vector3(), target: new Vector3() });
+  const look = useRef(new Vector3(...FRAMINGS.standing.target));
+  const tmp = useRef({ position: new Vector3(), target: new Vector3(), dir: new Vector3(), sph: new Spherical(), last: new Vector3() });
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -27,29 +34,45 @@ export function CameraRig() {
     return () => window.removeEventListener("pointermove", onMove);
   }, []);
 
-  useFrame(({ camera, size }, dt) => {
-    const g = goal.current;
-    const framing = CAMERA[view];
-    g.position.set(...framing.position);
-    g.target.set(...framing.target);
-    if (view === "room") {
+  useFrame(({ camera, size, events }, dt) => {
+    const t = tmp.current;
+    const framing: Framing = FRAMINGS[focus ?? pose];
+    t.position.set(...framing.position);
+    t.target.set(...framing.target);
+
+    if (!focus && pose === "standing") {
       // Narrow (portrait) screens: step back so the desk still fits.
       const aspect = size.width / size.height;
       if (aspect < 1.4) {
         const back = (1.4 - aspect) * 2.6;
-        g.position.z += back;
-        g.position.y += back * 0.12;
+        t.position.z += back;
+        t.position.y += back * 0.12;
       }
     }
-    if (!reduced) {
-      const amp = view === "room" ? 1 : 0.15;
-      g.position.x += pointer.current.x * 0.2 * amp;
-      g.position.y += pointer.current.y * 0.09 * amp;
+
+    const px = reduced ? 0 : pointer.current.x;
+    const py = reduced ? 0 : pointer.current.y;
+    if (framing.look.kind === "parallax") {
+      t.position.x += px * 0.2 * framing.look.amp;
+      t.position.y += py * 0.09 * framing.look.amp;
+    } else {
+      // Positive yaw turns left; moving the pointer right turns right.
+      t.dir.subVectors(t.target, t.position);
+      t.sph.setFromVector3(t.dir);
+      t.sph.theta += range(-px, framing.look.yaw);
+      t.sph.phi = Math.min(Math.PI - 0.15, Math.max(0.15, t.sph.phi - range(py, framing.look.pitch)));
+      t.dir.setFromSpherical(t.sph);
+      t.target.copy(t.position).add(t.dir);
     }
+
     const k = reduced ? 1 : 1 - Math.exp(-3 * Math.min(dt, 0.1));
-    camera.position.lerp(g.position, k);
-    look.current.lerp(g.target, k);
+    camera.position.lerp(t.position, k);
+    look.current.lerp(t.target, k);
     camera.lookAt(look.current);
+
+    // Objects slide under a still pointer while the camera moves: re-check hover so highlights don't stick.
+    if (t.last.distanceToSquared(look.current) > 1e-6) events.update?.();
+    t.last.copy(look.current);
   });
 
   return null;

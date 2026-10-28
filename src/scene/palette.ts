@@ -11,6 +11,11 @@ export const FIXED = {
   keyboard: "#2a2a30",
   wire: "#2b2620",
   steam: "#ffffff",
+  ink: "#2b2a33",
+  rule: "#6f8fb0",
+  phoneOff: "#0c0c10",
+  phoneText: "#ffffff",
+  phoneGlow: "#cfe0ff",
   lampCool: "#e3ecff",
   lampWarm: "#ffb35c",
 };

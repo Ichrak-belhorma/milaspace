@@ -64,7 +64,7 @@ function useScreenTexture(glow: string, ink: string) {
 /** Click to zoom in and open the study view. The lid opens a little wider while you study. */
 export function Laptop() {
   const glow = useThemeStore((s) => s.active.room.screenGlow);
-  const view = useUiStore((s) => s.view);
+  const studying = useUiStore((s) => s.focus === "laptop");
   const reduced = useReducedMotion();
   const { active, bind } = useInteractable("laptop");
   const screen = useScreenTexture(glow, "#1d1d24");
@@ -72,7 +72,7 @@ export function Laptop() {
 
   useFrame((_, dt) => {
     if (!lid.current) return;
-    const target = LAPTOP.openAngle - (view === "laptop" ? 0.12 : 0);
+    const target = LAPTOP.openAngle - (studying ? 0.12 : 0);
     lid.current.rotation.x = reduced ? target : damp(lid.current.rotation.x, target, 5, dt);
   });
 

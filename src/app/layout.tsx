@@ -7,6 +7,7 @@ import "@fontsource/varela-round";
 import "@fontsource-variable/nunito";
 import "@fontsource-variable/dm-sans";
 import "@fontsource-variable/inter";
+import "@fontsource/caveat"; // handwriting on the desk notebook's page
 import { cssVarsToRule, NO_FLASH_SCRIPT, themeToCssVars } from "@/theme/cssVars";
 import { DEFAULT_PRESET } from "@/theme/presets";
 import "./globals.css";

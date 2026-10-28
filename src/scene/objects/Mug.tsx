@@ -6,7 +6,7 @@ import { useRef } from "react";
 import { Group, Mesh, MeshBasicMaterial } from "three";
 import { useNow } from "@/hooks/useNow";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { COFFEE_COOL_MS, MUG_SIPS, useRoomStore } from "@/stores/room";
+import { DRINKS, DRINK_COOL_MS, DRINK_SIPS, useRoomStore } from "@/stores/room";
 import { Asset } from "../assets/Asset";
 import { damp } from "../damp";
 import { POSITIONS } from "../layout";
@@ -16,7 +16,7 @@ import { useInteractable } from "../useInteractable";
 
 const PUFFS = 4;
 
-/** Rising, fading wisps. `strength` fades as the coffee cools. */
+/** Rising, fading wisps. `strength` fades as the drink cools. */
 function Steam({ strength }: { strength: number }) {
   const reduced = useReducedMotion();
   const puffs = useRef<(Mesh | null)[]>([]);
@@ -45,37 +45,39 @@ function Steam({ strength }: { strength: number }) {
   );
 }
 
-/** Click the coaster for a coffee, click the mug to sip, and click the empty mug to clear it. */
+/** Click the coaster to choose a drink, the cup to sip, and the empty cup to clear it. */
 export function Mug() {
-  const coffee = useRoomStore((s) => s.coffee);
+  const drink = useRoomStore((s) => s.drink);
   const reduced = useReducedMotion();
   const { active, bind } = useInteractable("mug");
-  const mug = useRef<Group>(null);
+  const cup = useRef<Group>(null);
   const now = useNow(30_000);
 
   useFrame((_, dt) => {
-    if (!mug.current) return;
-    const target = coffee.present ? 1 : 0.001;
-    const s = reduced ? target : damp(mug.current.scale.x, target, 9, dt);
-    mug.current.scale.setScalar(s);
-    mug.current.visible = s > 0.01;
+    if (!cup.current) return;
+    const target = drink.kind ? 1 : 0.001;
+    const s = reduced ? target : damp(cup.current.scale.x, target, 9, dt);
+    cup.current.scale.setScalar(s);
+    cup.current.visible = s > 0.01;
   });
 
-  const fill = coffee.sipsLeft / MUG_SIPS;
-  const warmth = coffee.brewedAt ? Math.max(0, 1 - (now - coffee.brewedAt) / COFFEE_COOL_MS) : 0;
+  const spec = drink.kind ? DRINKS[drink.kind] : null;
+  const fill = drink.sipsLeft / DRINK_SIPS;
+  const warmth = spec?.hot && drink.madeAt ? Math.max(0, 1 - (now - drink.madeAt) / DRINK_COOL_MS) : 0;
+  const glass = spec?.vessel === "glass";
 
   return (
     <group position={POSITIONS.mug} {...bind}>
-      <Asset id="coaster" highlight={active && !coffee.present} />
-      <group ref={mug} scale={0.001}>
-        <Asset id="mug" highlight={active} />
-        {fill > 0 && (
-          <mesh position={[0, 0.02 + fill * 0.065, 0]} rotation-x={-Math.PI / 2}>
-            <circleGeometry args={[0.038, 24]} />
-            <meshStandardMaterial color={FIXED.coffee} roughness={0.2} />
+      <Asset id="coaster" highlight={active && !drink.kind} />
+      <group ref={cup} scale={0.001}>
+        <Asset id={glass ? "glass" : "mug"} highlight={active} />
+        {spec && fill > 0 && (
+          <mesh position={[0, 0.01 + fill * (glass ? 0.09 : 0.075) / 2, 0]}>
+            <cylinderGeometry args={[glass ? 0.032 : 0.037, glass ? 0.03 : 0.036, fill * (glass ? 0.09 : 0.075), 24]} />
+            <meshStandardMaterial color={spec.liquid} roughness={0.15} transparent={glass} opacity={glass ? 0.55 : 1} />
           </mesh>
         )}
-        {fill > 0 && warmth > 0.02 && <Steam strength={warmth} />}
+        {spec && fill > 0 && warmth > 0.02 && <Steam strength={warmth} />}
       </group>
     </group>
   );

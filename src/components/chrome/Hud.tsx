@@ -1,11 +1,13 @@
 "use client";
 
 import { useUiStore } from "@/stores/ui";
+import { AccountPanel } from "./AccountPanel";
 import { AmbiencePanel } from "./AmbiencePanel";
 import { Navbar } from "./Navbar";
 import { NotebookPanel } from "./NotebookPanel";
 import { ObjectBar } from "./ObjectBar";
 import { ObjectInspector } from "./ObjectInspector";
+import { PoseBar } from "./PoseBar";
 import { StudyView } from "./StudyView";
 import { ThemeEditor } from "./ThemeEditor";
 import { TimerPanel } from "./TimerPanel";
@@ -17,6 +19,7 @@ const PANELS = {
   ambience: AmbiencePanel,
   notebook: NotebookPanel,
   timer: TimerPanel,
+  account: AccountPanel,
 } as const;
 
 /**
@@ -25,15 +28,16 @@ const PANELS = {
  */
 export function Hud() {
   const panel = useUiStore((s) => s.panel);
-  const view = useUiStore((s) => s.view);
+  const studying = useUiStore((s) => s.focus === "laptop");
+  const sleeping = useUiStore((s) => s.sleeping);
   const Panel = panel ? PANELS[panel] : null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-20">
+    <div className="hud pointer-events-none fixed inset-0 z-20" data-sleeping={sleeping || undefined}>
       <Navbar />
       <main className="absolute inset-0">
         <h1 className="sr-only">Mila study room</h1>
-        {view === "laptop" && (
+        {studying && (
           <div className="absolute inset-x-3 top-24 bottom-44 sm:bottom-28">
             <StudyView />
           </div>
@@ -50,6 +54,7 @@ export function Hud() {
           <div className="order-1 flex flex-col items-center gap-2 sm:order-2 sm:absolute sm:inset-x-0 sm:bottom-0 sm:mx-auto sm:w-fit">
             <ObjectInspector />
             <Toast />
+            <PoseBar />
             <ObjectBar />
           </div>
         </div>

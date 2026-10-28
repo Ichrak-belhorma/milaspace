@@ -13,6 +13,7 @@ export type Todo = {
   day: string;
   createdAt: number;
   doneAt: number | null;
+  updatedAt: number;
 };
 
 type NotebookStore = {
@@ -20,6 +21,8 @@ type NotebookStore = {
   add: (text: string) => void;
   toggle: (id: string) => void;
   remove: (id: string) => void;
+  /** Replace all to-dos (used by cloud sync). */
+  replaceAll: (todos: Todo[]) => void;
   edit: (id: string, text: string) => void;
 };
 
@@ -37,18 +40,27 @@ export const useNotebookStore = create<NotebookStore>()(
         const clean = text.trim().slice(0, 200);
         if (!clean) return;
         const now = Date.now();
-        set((s) => ({ todos: [...s.todos, { id: uid("td_"), text: clean, done: false, day: dayKey(now), createdAt: now, doneAt: null }] }));
+        set((s) => ({ todos: [...s.todos, { id: uid("td_"), text: clean, done: false, day: dayKey(now), createdAt: now, doneAt: null, updatedAt: now }] }));
       },
       toggle: (id) =>
         set((s) => ({
-          todos: s.todos.map((t) => (t.id === id ? { ...t, done: !t.done, doneAt: t.done ? null : Date.now() } : t)),
+          todos: s.todos.map((t) => (t.id === id ? { ...t, done: !t.done, doneAt: t.done ? null : Date.now(), updatedAt: Date.now() } : t)),
         })),
       remove: (id) => set((s) => ({ todos: s.todos.filter((t) => t.id !== id) })),
+      replaceAll: (todos) => set({ todos }),
       edit: (id, text) => {
         const clean = text.trim().slice(0, 200);
-        if (clean) set((s) => ({ todos: s.todos.map((t) => (t.id === id ? { ...t, text: clean } : t)) }));
+        if (clean) set((s) => ({ todos: s.todos.map((t) => (t.id === id ? { ...t, text: clean, updatedAt: Date.now() } : t)) }));
       },
     }),
-    { name: "mila:notebook", version: 1, storage: localJSONStorage },
+    {
+      name: "mila:notebook",
+      version: 2,
+      storage: localJSONStorage,
+      migrate: (persisted) => {
+        const p = (persisted ?? {}) as { todos?: (Omit<Todo, "updatedAt"> & { updatedAt?: number })[] };
+        return { todos: (p.todos ?? []).map((t) => ({ ...t, updatedAt: t.updatedAt ?? t.doneAt ?? t.createdAt })) };
+      },
+    },
   ),
 );

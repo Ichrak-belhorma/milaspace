@@ -2,12 +2,11 @@
 
 import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { closeDrawer } from "@/stores/actions";
+import { missedClick } from "@/stores/actions";
 import { useQualityStore } from "@/stores/quality";
 import { useThemeStore } from "@/stores/theme";
-import { useUiStore } from "@/stores/ui";
 import { CameraRig } from "./CameraRig";
-import { CAMERA } from "./layout";
+import { CAMERA_FOV, FRAMINGS } from "./layout";
 import { Lighting } from "./Lighting";
 import { Room } from "./Room";
 
@@ -24,12 +23,9 @@ export default function Scene() {
     <Canvas
       shadows="percentage"
       dpr={[1, dpr]}
-      camera={{ position: CAMERA.room.position, fov: CAMERA.room.fov, near: 0.05, far: 60 }}
+      camera={{ position: FRAMINGS.standing.position, fov: CAMERA_FOV, near: 0.03, far: 60 }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
-      onPointerMissed={() => {
-        if (useUiStore.getState().view === "drawer") closeDrawer();
-        else useUiStore.getState().setInspect(null);
-      }}
+      onPointerMissed={missedClick}
     >
       <PerformanceMonitor onDecline={decline} onIncline={incline} />
       <color attach="background" args={[background]} />

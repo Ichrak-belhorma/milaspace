@@ -53,7 +53,7 @@ export const useThemeStore = create<ThemeState>()(
       save: (name) => {
         const { active, custom } = get();
         if (getPreset(active.id)) return get().saveAsNew(name ?? `${active.name} (mine)`);
-        const updated = { ...active, name: name?.trim() || active.name };
+        const updated = { ...active, name: name?.trim() || active.name, updatedAt: Date.now() };
         set({ active: updated, custom: custom.map((t) => (t.id === updated.id ? updated : t)), dirty: false });
         return updated;
       },
@@ -65,6 +65,7 @@ export const useThemeStore = create<ThemeState>()(
           id: newThemeId(),
           name: name.trim().slice(0, 48) || "My theme",
           basedOn: getPreset(active.id) ? active.id : active.basedOn,
+          updatedAt: Date.now(),
         };
         set({ active: theme, custom: [...custom, theme], dirty: false });
         return theme;
