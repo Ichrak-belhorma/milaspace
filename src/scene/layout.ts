@@ -53,7 +53,7 @@ export const FRAMINGS = {
   // Propped on the pillow looking toward the desk and window; turn right for the nightstand, left for the door.
   lying: { position: [2.2, 0.84, -1.7], target: [-0.6, 1.05, -1.45], look: { kind: "look", yaw: [-1.0, 1.3], pitch: [-0.5, 0.5] } },
   laptop: { position: [0.1, 1.12, -0.82], target: [0.08, 0.92, -1.9], look: { kind: "parallax", amp: 0.15 } },
-  calendar: { position: [2.2, 1.92, -1.42], target: [2.2, 1.94, -2.19], look: { kind: "look", yaw: [-0.08, 0.08], pitch: [-0.06, 0.06] } },
+  calendar: { position: [2.2, 1.84, -1.15], target: [2.2, 1.84, -2.19], look: { kind: "look", yaw: [-0.08, 0.08], pitch: [-0.06, 0.06] } },
   drawer: { position: [0.86, 1.62, -0.66], target: [0.82, 0.55, -1.3], look: { kind: "parallax", amp: 0.15 } },
   fidget: { position: [-0.27, 0.98, -1.3], target: [-0.3, 0.755, -1.58], look: { kind: "look", yaw: [-0.12, 0.12], pitch: [-0.08, 0.08] } },
   notebook: { position: [0.62, 1.2, -1.6], target: [0.6, 0.76, -1.84], look: { kind: "look", yaw: [-0.12, 0.12], pitch: [-0.08, 0.08] } },

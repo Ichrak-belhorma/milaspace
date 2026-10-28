@@ -56,7 +56,7 @@ test("wall calendar zooms in, picks a day and exports .ics", async ({ page }) =>
   await objectBar(page).getByRole("button", { name: "Look at the calendar" }).click();
   const controls = page.getByRole("region", { name: "Calendar", exact: true });
   await expect(controls.getByRole("button", { name: "Next month" })).toBeVisible();
-  await page.waitForTimeout(4500);
+  await page.waitForTimeout(9000); // the camera crosses the room; slow under CPU rendering
   await page.screenshot({ path: `${SHOTS}/calendar.png` });
 
   const download = page.waitForEvent("download");
