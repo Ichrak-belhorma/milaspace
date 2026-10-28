@@ -5,7 +5,7 @@ const port = Number(process.env.PORT ?? 3100);
 export default defineConfig({
   testDir: "tests/e2e",
   // Generous: CI and headless browsers render WebGL on the CPU, which makes screenshots slow.
-  timeout: 120_000,
+  timeout: 240_000,
   fullyParallel: false,
   reporter: [["list"]],
   use: {
