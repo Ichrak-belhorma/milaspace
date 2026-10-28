@@ -1,0 +1,335 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Tailwind's default palette is removed on purpose: every color utility maps to a
+ * theme variable written on :root by the theme engine (src/theme), so components can't hard-code color.
+ */
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@theme inline {
+  --color-ink: var(--mila-text);
+  --color-ink-muted: var(--mila-text-muted);
+  --color-accent: var(--mila-accent);
+  --color-accent-2: var(--mila-accent-2);
+  --color-on-accent: var(--mila-on-accent);
+  --color-glass: var(--mila-glass-tint);
+  --color-edge: var(--mila-border-color);
+  --color-ornament: var(--mila-ornament-color);
+  --color-glow: var(--mila-glow-color);
+  --color-shade: var(--mila-shadow-color);
+  --color-backdrop: var(--mila-bg);
+  --font-display: var(--mila-font-display);
+  --font-body: var(--mila-font-body);
+  --radius-glass: var(--mila-radius);
+  --radius-glass-sm: calc(var(--mila-radius) * 0.6);
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+    background: var(--mila-bg);
+  }
+
+  body {
+    color: var(--mila-text);
+    font-family: var(--mila-font-body);
+    cursor: var(--mila-cursor, auto);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  button,
+  select,
+  summary,
+  label:has(input),
+  input[type="checkbox"],
+  input[type="range"],
+  input[type="color"],
+  input[type="file"] {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--mila-accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--mila-accent) 40%, transparent);
+  }
+
+  input[type="range"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--mila-accent);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--mila-text) 25%, transparent) transparent;
+  }
+}
+
+@layer components {
+  /*
+   * Glass surface. Layers are siblings, never nested, because an element with backdrop-filter
+   * becomes a "backdrop root": a blurred child of a blurred parent would only see the parent.
+   * Order: shadow → body → seam → ornament → content.
+   */
+  .glass {
+    --seam: 10px;
+    position: relative;
+    border-radius: var(--mila-radius);
+    color: var(--mila-text);
+  }
+
+  .glass > .glass__shadow,
+  .glass > .glass__body,
+  .glass > .glass__seam,
+  .glass > .glass__orn {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .glass__shadow {
+    inset: 0;
+    border-radius: inherit;
+    box-shadow:
+      0 18px 40px -16px color-mix(in srgb, var(--mila-shadow-color) calc(var(--mila-shadow-strength) * 100%), transparent),
+      0 0 calc(30px * var(--mila-glow-strength)) color-mix(in srgb, var(--mila-glow-color) calc(var(--mila-glow-strength) * 55%), transparent);
+  }
+
+  .glass__body {
+    inset: 0;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--mila-glass-tint) calc(var(--mila-glass-opacity) * 100%), transparent);
+    -webkit-backdrop-filter: blur(var(--mila-glass-blur)) saturate(var(--mila-glass-saturation));
+    backdrop-filter: blur(var(--mila-glass-blur)) saturate(var(--mila-glass-saturation));
+    border: var(--mila-border-width) var(--mila-border-style)
+      color-mix(in srgb, var(--mila-border-color) calc(var(--mila-border-opacity) * 100%), transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in srgb, var(--mila-highlight) calc(var(--mila-highlight-strength) * 100%), transparent),
+      inset 0 0 0 1px color-mix(in srgb, var(--mila-highlight) calc(var(--mila-highlight-strength) * 15%), transparent);
+  }
+
+  /* Soft top sheen (strong in Aero, faint in Minimal). */
+  .glass__body::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--mila-highlight) calc(var(--mila-highlight-strength) * 32%), transparent) 0%,
+      transparent 45%
+    );
+  }
+
+  /* Ornamented edges: the body feathers out while the ornament feathers in. */
+  .glass[data-edge-bottom] > .glass__body {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--seam)), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--seam)), transparent);
+  }
+  .glass[data-edge-top] > .glass__body {
+    -webkit-mask-image: linear-gradient(to top, #000 calc(100% - var(--seam)), transparent);
+    mask-image: linear-gradient(to top, #000 calc(100% - var(--seam)), transparent);
+  }
+  .glass[data-edge-top][data-edge-bottom] > .glass__body {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--seam), #000 calc(100% - var(--seam)), transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 var(--seam), #000 calc(100% - var(--seam)), transparent);
+  }
+
+  /* A blurrier band straddling the join, so glass and ornament melt together. */
+  .glass__seam {
+    left: var(--orn-inset, 0px);
+    right: var(--orn-inset, 0px);
+    height: calc(var(--seam) * 2);
+    background: color-mix(in srgb, var(--mila-glass-tint) calc(var(--mila-glass-opacity) * 45%), transparent);
+    -webkit-backdrop-filter: blur(calc(var(--mila-glass-blur) * 1.3));
+    backdrop-filter: blur(calc(var(--mila-glass-blur) * 1.3));
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 50%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 50%, transparent);
+  }
+  .glass__seam--bottom {
+    top: calc(100% - var(--seam) * 1.5);
+  }
+  .glass__seam--top {
+    bottom: calc(100% - var(--seam) * 1.5);
+  }
+
+  /* The ornament: a frosted strip whose shape is the theme's SVG tile, fading in from the glass. */
+  .glass__orn {
+    left: var(--orn-inset, 0px);
+    right: var(--orn-inset, 0px);
+    height: var(--orn-h, 24px);
+    background: color-mix(in srgb, var(--mila-ornament-color) 80%, transparent);
+    -webkit-backdrop-filter: blur(calc(var(--mila-glass-blur) * 0.5)) saturate(var(--mila-glass-saturation));
+    backdrop-filter: blur(calc(var(--mila-glass-blur) * 0.5)) saturate(var(--mila-glass-saturation));
+    -webkit-mask-repeat: repeat-x, no-repeat;
+    mask-repeat: repeat-x, no-repeat;
+    -webkit-mask-size: auto 100%, 100% 100%;
+    mask-size: auto 100%, 100% 100%;
+    -webkit-mask-position: center, center;
+    mask-position: center, center;
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  .glass__orn--bottom {
+    top: calc(100% - var(--seam));
+    -webkit-mask-image: var(--orn-mask), linear-gradient(to bottom, rgb(0 0 0 / 0.1), #000 var(--seam));
+    mask-image: var(--orn-mask), linear-gradient(to bottom, rgb(0 0 0 / 0.1), #000 var(--seam));
+  }
+  .glass__orn--top {
+    bottom: calc(100% - var(--seam));
+    -webkit-mask-image: var(--orn-mask), linear-gradient(to top, rgb(0 0 0 / 0.1), #000 var(--seam));
+    mask-image: var(--orn-mask), linear-gradient(to top, rgb(0 0 0 / 0.1), #000 var(--seam));
+  }
+
+  .glass__content {
+    position: relative;
+  }
+
+  /* Controls that sit on glass (no nested backdrop-filter). */
+  .well {
+    background: color-mix(in srgb, var(--mila-text) 7%, transparent);
+    border-radius: calc(var(--mila-radius) * 0.6);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 2.25rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: calc(var(--mila-radius) * 0.6);
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--mila-text);
+    transition:
+      background-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.12s ease;
+  }
+  .btn:hover {
+    background: color-mix(in srgb, var(--mila-text) 10%, transparent);
+  }
+  .btn:active {
+    transform: translateY(1px) scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .btn-soft {
+    background: color-mix(in srgb, var(--mila-text) 8%, transparent);
+  }
+  .btn-soft:hover {
+    background: color-mix(in srgb, var(--mila-text) 14%, transparent);
+  }
+  .btn-accent {
+    background: var(--mila-accent);
+    color: var(--mila-on-accent);
+    box-shadow: 0 0 calc(18px * var(--mila-glow-strength)) color-mix(in srgb, var(--mila-glow-color) 60%, transparent);
+  }
+  .btn-accent:hover {
+    background: color-mix(in srgb, var(--mila-accent) 88%, var(--mila-on-accent));
+  }
+  .btn-icon {
+    padding: 0.4rem;
+    min-width: 2.25rem;
+  }
+  .btn[aria-pressed="true"],
+  .btn[aria-expanded="true"],
+  .btn[aria-selected="true"],
+  .btn[data-active="true"] {
+    background: color-mix(in srgb, var(--mila-accent) 24%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mila-accent) 60%, transparent);
+  }
+
+  .field {
+    width: 100%;
+    padding: 0.45rem 0.65rem;
+    border-radius: calc(var(--mila-radius) * 0.6);
+    background: color-mix(in srgb, var(--mila-text) 7%, transparent);
+    border: 1px solid color-mix(in srgb, var(--mila-text) 18%, transparent);
+    color: var(--mila-text);
+  }
+  .field::placeholder {
+    color: var(--mila-text-muted);
+  }
+
+  .label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mila-text-muted);
+  }
+
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Browsers without backdrop-filter get a near-solid tint so text stays readable. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass__body {
+    background: color-mix(in srgb, var(--mila-glass-tint) 94%, transparent);
+  }
+  .glass__orn {
+    background: var(--mila-ornament-color);
+  }
+  .glass__seam {
+    display: none;
+  }
+}
+
+@keyframes mila-slide-in-right {
+  from {
+    transform: translateX(24px);
+  }
+}
+@keyframes mila-rise {
+  from {
+    transform: translateY(16px);
+  }
+}
+.anim-slide-in {
+  animation: mila-slide-in-right 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.anim-rise {
+  animation: mila-rise 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Reduced motion: respect the OS setting unless the user explicitly chose full motion in Mila. */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion="full"]) *,
+  html:not([data-motion="full"]) *::before,
+  html:not([data-motion="full"]) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

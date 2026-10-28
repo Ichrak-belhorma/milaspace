@@ -1,12 +1,13 @@
 # Mila — Implementation Plan
 
-Status: **awaiting approval** before Phase 1 starts.
+Status: **Phase 1 complete** (approved 2026-10-28). Phase 2 next; it needs Supabase and Anthropic keys.
 
 ## Stack (pinned at current stable)
 
 Next.js 16 (App Router, TS strict) · React 19 · @react-three/fiber 9 + drei 10 · three 0.186 ·
 Zustand 5 · Tailwind CSS 4 · Supabase (`@supabase/ssr`) · Anthropic SDK (server routes only) ·
-ts-fsrs 5 · Howler 2 + Web Audio · KaTeX · CodeMirror 6 · zod 4 · Vitest · Playwright (smoke/screenshots).
+ts-fsrs 5 · Web Audio · KaTeX · CodeMirror 6 · zod 4 · Vitest · Playwright (smoke/screenshots).
+(Howler was dropped: one Web Audio graph handles procedural sound, files and the window filter.)
 Package manager: npm. Fonts self-hosted via `@fontsource/*` (no build-time network dependency).
 
 ## Key design decisions
