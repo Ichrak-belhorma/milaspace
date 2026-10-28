@@ -27,6 +27,9 @@ export function CameraRig() {
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
+      // While a panel, quick controls or the study view is open, the view holds still.
+      const ui = useUiStore.getState();
+      if (ui.panel || ui.inspect || ui.focus === "laptop") return;
       pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1;
       pointer.current.y = -((e.clientY / window.innerHeight) * 2 - 1);
     };
