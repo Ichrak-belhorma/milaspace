@@ -1,9 +1,12 @@
 # Mila — Implementation Plan
 
 Status: **Phase 1 complete**, plus room additions (sit at the desk with close-ups, bed with look-around and sleep,
-nightstand phone, drink choice, custom painting, curtains). **Phase 2 complete except AI**: Supabase auth and sync,
-modules, curriculum editor (outline import), backward planner, daily tasks, FSRS flashcards. The AI routes
-(`/api/ai/curriculum`, `/api/ai/flashcards`) validate input and return 501 until the model integration lands.
+nightstand phone with alarm, drink choice, custom painting, curtains, wall calendar, study buddy, countdown note,
+burning candle, growing plant, archive boxes). **Phase 2 complete**: Supabase auth and sync, modules, curriculum
+editor (outline import or AI syllabus breakdown from a PDF), a global planner (one daily budget, weekly free-time
+grid, timed blocks, exam-proximity priority, learned pace), timer ↔ task check-ins, "just start" 5-minute runs,
+`.ics` export, module archive with final grade, FSRS flashcards (manual or AI from notes). AI runs only with
+`ANTHROPIC_API_KEY` on the server; without it the routes answer 501 and the UI says AI is off.
 
 ## Stack (pinned at current stable)
 
@@ -84,15 +87,15 @@ tasks are not stored; only task history (done/skipped) and manual tasks are.
 |---|---|---|
 | `profiles` | id (=auth.users), username, display_name, avatar_url, bio, active_theme jsonb, settings jsonb (timer, audio, motion), showcase jsonb, is_public | 2 (public fields used in 4) |
 | `themes` | id, owner_id, name, tokens jsonb, room jsonb, is_public, forked_from, likes_count | 2 (sharing in 4) |
-| `room_state` | user_id PK, state jsonb (lamp, window, curtains, drink, phone), painting_path, slots jsonb | 2 |
-| `modules` | id, user_id, name, exam_date?, target_grade?, syllabus_text?, syllabus_path?, color, daily_minutes? | 2 |
+| `room_state` | user_id PK, state jsonb (lamp, window, curtains, drink, phone + alarm, buddy), painting_path, slots jsonb | 2 |
+| `modules` | id, user_id, name, exam_date?, target_grade?, syllabus_text?, syllabus_path?, color, daily_minutes (legacy), archived_at?, final_grade? | 2 |
 | `curriculum_nodes` | id, module_id, parent_id, kind (chapter/concept/skill), title, position, content_type (memorize/math/coding/conceptual), est_minutes, mastery 0–1, user_edited | 2 |
-| `study_tasks` | id, user_id, module_id, node_id?, date, kind (learn/review/flashcards/practice/buffer), est_minutes, status (todo/done/skipped), source (auto/manual), completed_at | 2 |
+| `study_tasks` | id, user_id, module_id, node_id?, date, kind (learn/review/flashcards/practice/buffer), est_minutes, start_minute?, status (todo/done/skipped), source (auto/manual), completed_at | 2 |
 | `flashcards` | id, user_id, module_id, node_id?, front, back, FSRS fields (due, stability, difficulty, elapsed_days, scheduled_days, reps, lapses, state, last_review) | 2 |
 | `review_logs` | id, card_id, rating, state, due, stability, difficulty, reviewed_at | 2 |
 | `practice_items` | id, module_id, node_id, kind (math/coding), prompt, solution_steps jsonb, language?, starter_code?, tests jsonb | 3 |
 | `practice_attempts` | id, user_id, item_id, correct, score, created_at | 3 |
-| `focus_sessions` | id, user_id, module_id?, started_at, ended_at, focus_minutes, completed | 2 (currency in 3) |
+| `focus_sessions` | id, user_id, module_id?, task_id?, started_at, ended_at, focus_minutes, completed | 2 (currency in 3) |
 | `todos` | id, user_id, text, done, day, created_at, done_at, updated_at (the notebook's own to-dos) | 2 |
 | `currency_ledger` | id, user_id, delta, reason (focus/purchase/bonus), ref_id, created_at (balance = sum; written only server-side) | 3 |
 | `user_items` | user_id, item_id, acquired_at | 3 |
@@ -100,14 +103,18 @@ tasks are not stored; only task history (done/skipped) and manual tasks are.
 | `study_rooms` / `study_room_members` | id, host_id, name, is_public, theme_id / room_id, user_id, joined_at (live timers via Supabase Realtime presence, not tables) | 4 |
 | `theme_likes`, `follows` | composite PKs | 4 |
 
+The schedule (global daily budget, weekly availability, learned pace factor) lives in `profiles.settings.schedule`.
 Streaks and per-module stats are SQL views over `focus_sessions` (no denormalized counters to drift).
 
 ## Study engine algorithm (Phase 2)
 
 1. Flatten the curriculum tree into ordered concepts with effort (`est_minutes`, weighted by content type).
 2. Window = today → exam date minus a review buffer (max(2 days, 15% of the window)).
-3. Assign `learn` tasks to fit the daily minute budget (default 60 min, user-editable); after each learn, add
-   expanding `review` touches (+1, +3, +7 days) and put mixed-topic `practice` on buffer days (interleaving).
+3. All active modules are planned together against one daily budget, capped by each day's free time from the
+   weekly availability grid. New material is allocated earliest-exam-first; learn estimates are scaled by the
+   learned pace factor; topics stay whole when a day could hold them. After each learn, add expanding `review`
+   touches (+1, +3, +7 days, sliding to the next day with room) and put mixed-topic `practice` on buffer days.
+   Each task gets a start time inside a free interval (5-minute gaps; today's blocks start after now).
 4. FSRS due cards become one daily `flashcards` task per module.
 5. No exam date → rolling mode: steady pace with no buffer. No curriculum → flashcards and manual tasks only.
 6. `replan(today)` runs on load and after reviews: missed tasks roll forward, weak concepts (low mastery or

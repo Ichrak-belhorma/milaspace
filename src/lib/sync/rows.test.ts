@@ -30,6 +30,20 @@ describe("sync row mappers", () => {
     expect(themeRows.fromRow(bad)).toBeNull();
   });
 
+  it("round-trips the 0003 fields: archive, grade, time block, task-linked session", () => {
+    const mod = { id: "m", name: "Bio", examDate: "2026-06-20", targetGrade: "A", syllabusText: null, dailyMinutes: 60, archivedAt: T, finalGrade: "B+", createdAt: T, updatedAt: T };
+    expect(moduleRows.fromRow(JSON.parse(JSON.stringify(moduleRows.toRow(mod, U))))).toEqual(mod);
+    const task = { id: "t", moduleId: "m", nodeId: "n", date: "2026-06-01", kind: "learn", title: "Learn: Cells", estMinutes: 45, status: "done", source: "auto", completedAt: T, start: 17 * 60 + 30, updatedAt: T } as const;
+    expect(taskRows.fromRow(JSON.parse(JSON.stringify(taskRows.toRow(task, U))))).toEqual(task);
+    const session = { id: "s", startedAt: T, endedAt: T + 1500_000, minutes: 25, completed: true, taskId: "t", moduleId: "m" };
+    expect(sessionRows.fromRow(JSON.parse(JSON.stringify(sessionRows.toRow(session, U))))).toEqual(session);
+  });
+
+  it("reads rows from a database without the 0003 columns", () => {
+    const row = { id: "m", name: "Bio", exam_date: null, target_grade: null, syllabus_text: null, daily_minutes: 60, created_at: "2026-06-01T10:00:00.000Z", updated_at: "2026-06-01T10:00:00.000Z" };
+    expect(moduleRows.fromRow(row)).toMatchObject({ id: "m", name: "Bio" });
+  });
+
   it("skips malformed rows", () => {
     expect(taskRows.fromRow({ id: "x", status: "maybe" })).toBeNull();
   });

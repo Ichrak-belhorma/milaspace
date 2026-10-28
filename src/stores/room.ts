@@ -9,6 +9,7 @@ export const ROOM_OBJECTS = [
   "window",
   "curtains",
   "painting",
+  "calendar",
   "lamp",
   "laptop",
   "notebook",
@@ -18,6 +19,7 @@ export const ROOM_OBJECTS = [
   "desk",
   "phone",
   "bed",
+  "buddy",
 ] as const;
 export type RoomObjectId = (typeof ROOM_OBJECTS)[number];
 
@@ -45,7 +47,9 @@ type RoomStore = {
   curtainsClosed: boolean;
   drink: Drink;
   drawerOpen: boolean;
-  phone: { faceDown: boolean };
+  phone: { faceDown: boolean; alarm: { time: string; enabled: boolean } };
+  /** The study buddy at the window desk (body doubling). */
+  buddy: { visible: boolean };
   /** Bumps whenever the painting's custom image changes; the image itself lives in IndexedDB. */
   painting: { custom: boolean; version: number };
   /** Increments on every fidget click; the scene turns each increment into spin. */
@@ -60,6 +64,8 @@ type RoomStore = {
   sip: () => "sipped" | "cleared" | "none";
   toggleDrawer: () => void;
   setPhoneFaceDown: (faceDown: boolean) => void;
+  setAlarm: (patch: Partial<RoomStore["phone"]["alarm"]>) => void;
+  setBuddyVisible: (visible: boolean) => void;
   setPainting: (custom: boolean) => void;
   clickFidget: () => void;
 };
@@ -72,7 +78,8 @@ export const useRoomStore = create<RoomStore>()(
       curtainsClosed: false,
       drink: { kind: null, sipsLeft: 0, madeAt: null },
       drawerOpen: false,
-      phone: { faceDown: false },
+      phone: { faceDown: false, alarm: { time: "07:30", enabled: false } },
+      buddy: { visible: true },
       painting: { custom: false, version: 0 },
       fidgetClicks: 0,
 
@@ -93,13 +100,15 @@ export const useRoomStore = create<RoomStore>()(
         return "cleared";
       },
       toggleDrawer: () => set((s) => ({ drawerOpen: !s.drawerOpen })),
-      setPhoneFaceDown: (faceDown) => set({ phone: { faceDown } }),
+      setPhoneFaceDown: (faceDown) => set((s) => ({ phone: { ...s.phone, faceDown } })),
+      setAlarm: (patch) => set((s) => ({ phone: { ...s.phone, alarm: { ...s.phone.alarm, ...patch } } })),
+      setBuddyVisible: (visible) => set({ buddy: { visible } }),
       setPainting: (custom) => set((s) => ({ painting: { custom, version: s.painting.version + 1 } })),
       clickFidget: () => set((s) => ({ fidgetClicks: s.fidgetClicks + 1 })),
     }),
     {
       name: "mila:room",
-      version: 2,
+      version: 3,
       storage: localJSONStorage,
       partialize: (s) => ({
         lamp: s.lamp,
@@ -107,6 +116,7 @@ export const useRoomStore = create<RoomStore>()(
         curtainsClosed: s.curtainsClosed,
         drink: s.drink,
         phone: s.phone,
+        buddy: s.buddy,
         painting: s.painting,
       }),
       migrate: (persisted, version) => {
@@ -116,6 +126,11 @@ export const useRoomStore = create<RoomStore>()(
           const c = p.coffee as { present?: boolean; sipsLeft?: number; brewedAt?: number | null } | undefined;
           p.drink = c?.present ? { kind: "coffee", sipsLeft: c.sipsLeft ?? 0, madeAt: c.brewedAt ?? null } : { kind: null, sipsLeft: 0, madeAt: null };
           delete p.coffee;
+        }
+        if (version < 3) {
+          const phone = (p.phone ?? {}) as { faceDown?: boolean };
+          p.phone = { faceDown: Boolean(phone.faceDown), alarm: { time: "07:30", enabled: false } };
+          p.buddy = { visible: true };
         }
         return p as Partial<RoomStore>;
       },

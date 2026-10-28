@@ -10,6 +10,7 @@ import { useAudioStore } from "@/stores/audio";
 import { useAuthStore } from "@/stores/auth";
 import { useNotebookStore } from "@/stores/notebook";
 import { useRoomStore } from "@/stores/room";
+import { useScheduleStore } from "@/stores/schedule";
 import { useStudyStore } from "@/stores/study";
 import { useThemeStore } from "@/stores/theme";
 import { useTimerStore } from "@/stores/timer";
@@ -83,6 +84,7 @@ export function AuthBridge() {
         if (s.masterVolume !== p.masterVolume || s.layers !== p.layers || s.weatherVolume !== p.weatherVolume || s.sfxVolume !== p.sfxVolume || s.music.volume !== p.music.volume) profile();
       }),
       useUiStore.subscribe((s, p) => s.motion !== p.motion && profile()),
+      useScheduleStore.subscribe((s, p) => (s.dailyBudget !== p.dailyBudget || s.availability !== p.availability || s.pace !== p.pace) && profile()),
       useRoomStore.subscribe((s, p) => {
         if (isApplyingRemote() || s.fidgetClicks !== p.fidgetClicks || s.drawerOpen !== p.drawerOpen) return;
         markLocalChange("room");
@@ -107,5 +109,12 @@ export function StudyPlanner() {
   useEffect(() => {
     if (useStudyStore.getState().plannedFor !== today) useStudyStore.getState().replan();
   }, [today]);
+  useEffect(
+    () =>
+      useScheduleStore.subscribe((s, p) => {
+        if (s.dailyBudget !== p.dailyBudget || s.availability !== p.availability || s.pace !== p.pace) useStudyStore.getState().replan();
+      }),
+    [],
+  );
   return null;
 }

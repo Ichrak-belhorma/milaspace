@@ -36,14 +36,26 @@ const moduleSchema = z.object({
   target_grade: z.string().nullable(),
   syllabus_text: z.string().nullable(),
   daily_minutes: z.number(),
+  archived_at: ts.nullish(),
+  final_grade: z.string().nullish(),
   created_at: ts,
   updated_at: ts,
 });
 export const moduleRows = mapper<Module, typeof moduleSchema>(
   "modules",
   moduleSchema,
-  (m) => ({ id: m.id, name: m.name, exam_date: m.examDate, target_grade: m.targetGrade, syllabus_text: m.syllabusText, daily_minutes: m.dailyMinutes, created_at: iso(m.createdAt), updated_at: iso(m.updatedAt) }),
-  (r) => ({ id: r.id, name: r.name, examDate: r.exam_date, targetGrade: r.target_grade, syllabusText: r.syllabus_text, dailyMinutes: r.daily_minutes, createdAt: ms(r.created_at)!, updatedAt: ms(r.updated_at)! }),
+  (m) => ({ id: m.id, name: m.name, exam_date: m.examDate, target_grade: m.targetGrade, syllabus_text: m.syllabusText, daily_minutes: m.dailyMinutes, archived_at: iso(m.archivedAt), final_grade: m.finalGrade ?? null, created_at: iso(m.createdAt), updated_at: iso(m.updatedAt) }),
+  (r) => ({
+    id: r.id,
+    name: r.name,
+    examDate: r.exam_date,
+    targetGrade: r.target_grade,
+    syllabusText: r.syllabus_text,
+    dailyMinutes: r.daily_minutes,
+    ...(r.archived_at ? { archivedAt: ms(r.archived_at), finalGrade: r.final_grade ?? null } : {}),
+    createdAt: ms(r.created_at)!,
+    updatedAt: ms(r.updated_at)!,
+  }),
 );
 
 const nodeSchema = z.object({
@@ -77,6 +89,7 @@ const taskSchema = z.object({
   status: z.enum(["todo", "done", "skipped"]),
   source: z.enum(["auto", "manual"]),
   completed_at: ts.nullable(),
+  start_minute: z.number().int().nullish(),
   updated_at: ts,
 });
 export const taskRows = mapper<StudyTask, typeof taskSchema>(
@@ -94,6 +107,7 @@ export const taskRows = mapper<StudyTask, typeof taskSchema>(
     status: t.status,
     source: t.source,
     completed_at: iso(t.completedAt),
+    start_minute: t.start ?? null,
     updated_at: iso(t.updatedAt ?? t.completedAt ?? Date.now()),
   }),
   (r) => ({
@@ -108,6 +122,7 @@ export const taskRows = mapper<StudyTask, typeof taskSchema>(
     status: r.status,
     source: r.source,
     completedAt: ms(r.completed_at),
+    ...(r.start_minute != null ? { start: r.start_minute } : {}),
     updatedAt: ms(r.updated_at)!,
   }),
 );
@@ -149,12 +164,28 @@ export const logRows = mapper<ReviewLog, typeof logSchema>(
   (r) => ({ id: r.id, cardId: r.card_id, rating: r.rating, state: r.state, due: new Date(r.due).toISOString(), stability: r.stability, difficulty: r.difficulty, reviewedAt: new Date(r.reviewed_at).toISOString() }),
 );
 
-const sessionSchema = z.object({ id: z.string(), started_at: ts, ended_at: ts, focus_minutes: z.number(), completed: z.boolean() });
+const sessionSchema = z.object({
+  id: z.string(),
+  started_at: ts,
+  ended_at: ts,
+  focus_minutes: z.number(),
+  completed: z.boolean(),
+  module_id: z.string().nullish(),
+  task_id: z.string().nullish(),
+});
 export const sessionRows = mapper<FocusSession, typeof sessionSchema>(
   "focus_sessions",
   sessionSchema,
-  (s) => ({ id: s.id, started_at: iso(s.startedAt), ended_at: iso(s.endedAt), focus_minutes: s.minutes, completed: s.completed }),
-  (r) => ({ id: r.id, startedAt: ms(r.started_at)!, endedAt: ms(r.ended_at)!, minutes: r.focus_minutes, completed: r.completed }),
+  (s) => ({ id: s.id, started_at: iso(s.startedAt), ended_at: iso(s.endedAt), focus_minutes: s.minutes, completed: s.completed, module_id: s.moduleId || null, task_id: s.taskId || null }),
+  (r) => ({
+    id: r.id,
+    startedAt: ms(r.started_at)!,
+    endedAt: ms(r.ended_at)!,
+    minutes: r.focus_minutes,
+    completed: r.completed,
+    ...(r.task_id ? { taskId: r.task_id } : {}),
+    ...(r.module_id ? { moduleId: r.module_id } : {}),
+  }),
 );
 
 const todoSchema = z.object({ id: z.string(), text: z.string(), done: z.boolean(), day, created_at: ts, done_at: ts.nullable(), updated_at: ts });

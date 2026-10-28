@@ -8,6 +8,8 @@ import { useAudioStore } from "@/stores/audio";
 import { useRoomStore } from "@/stores/room";
 import { useTimerStore } from "@/stores/timer";
 import { currentStreak, minutesOn } from "@/timer/stats";
+import { snoozeAlarm, stopAlarm } from "@/components/AlarmController";
+import { useUiStore } from "@/stores/ui";
 import { useTrackList } from "../AmbiencePanel";
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
@@ -20,12 +22,32 @@ const dateFmt = new Intl.DateTimeFormat(undefined, { weekday: "long", day: "nume
 export function PhoneScreen() {
   const now = useNow(15_000);
   const faceDown = useRoomStore((s) => s.phone.faceDown);
+  const alarm = useRoomStore((s) => s.phone.alarm);
+  const setAlarm = useRoomStore((s) => s.setAlarm);
+  const ringing = useUiStore((s) => s.alarmRinging);
   const setFaceDown = useRoomStore((s) => s.setPhoneFaceDown);
   const music = useAudioStore((s) => s.music);
   const setMusic = useAudioStore((s) => s.setMusic);
   const sessions = useTimerStore((s) => s.sessions);
   const tracks = useTrackList();
   const track = tracks.find((t) => t.id === music.trackId) ?? tracks[0];
+
+  if (ringing) {
+    return (
+      <>
+        <p className="text-center font-display text-4xl tabular-nums">{alarm.time}</p>
+        <p className="text-center text-sm text-ink-muted">Alarm</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" className="btn btn-accent text-sm" onClick={() => stopAlarm()} autoFocus>
+            Stop
+          </button>
+          <button type="button" className="btn btn-soft text-sm" onClick={() => snoozeAlarm()}>
+            Snooze 9 min
+          </button>
+        </div>
+      </>
+    );
+  }
 
   if (faceDown) {
     return (
@@ -63,6 +85,15 @@ export function PhoneScreen() {
         <FlameIcon size={14} /> {Math.round(minutesOn(sessions, dayKey(now)))} min today ·{" "}
         {currentStreak(sessions, now) > 0 ? `${currentStreak(sessions, now)}-day streak` : "no streak yet"}
       </p>
+      <div className="flex items-center gap-3">
+        <label htmlFor="phone-alarm" className="text-sm">
+          Alarm
+        </label>
+        <input id="phone-alarm" type="time" className="field w-auto py-1" value={alarm.time} onChange={(e) => e.target.value && setAlarm({ time: e.target.value })} />
+        <div className="flex-1">
+          <Switch label={alarm.enabled ? "On, every day" : "Off"} checked={alarm.enabled} onChange={(enabled) => setAlarm({ enabled })} />
+        </div>
+      </div>
       <Switch label="Flip face-down" description="Put it out of sight while you study" checked={faceDown} onChange={setFaceDown} />
     </>
   );

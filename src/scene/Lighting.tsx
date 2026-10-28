@@ -2,7 +2,7 @@
 
 import { useRoomStore } from "@/stores/room";
 import { useThemeStore } from "@/stores/theme";
-import { Candle } from "./assets/placeholders";
+import { BurningCandle } from "./objects/Progress";
 import { POSITIONS } from "./layout";
 import { WEATHER_LOOK } from "./palette";
 
@@ -19,7 +19,7 @@ export function Lighting() {
       <ambientLight color={room.ambientColor} intensity={ambient * 1.1} />
       <hemisphereLight color={room.ambientColor} groundColor={room.floor} intensity={ambient * 0.7} />
       <group position={candle}>
-        <Candle lit={Math.min(1, room.accentLightIntensity)} />
+        <BurningCandle lit={Math.min(1, room.accentLightIntensity)} />
         <pointLight position={[0, 0.16, 0.05]} color={room.accentLight} intensity={room.accentLightIntensity * 0.35} distance={2.5} decay={2} />
       </group>
     </>

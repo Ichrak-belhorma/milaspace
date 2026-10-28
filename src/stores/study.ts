@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { dayKey } from "@/lib/day";
+import { addDays, dayKey } from "@/lib/day";
 import { uid } from "@/lib/id";
 import { localJSONStorage } from "@/lib/storage";
 import { isDue, masteryAfterReview, newCardState, review, type CardState, type ReviewLogEntry, type ReviewRating } from "@/study/fsrs";
-import { parseOutline } from "@/study/outline";
-import { planModule, type PlanSummary, type PlanWarning } from "@/study/scheduler";
+import { parseOutline, type OutlineNode } from "@/study/outline";
+import { planAll, type PlanSummary, type PlanWarning } from "@/study/scheduler";
+import { useScheduleStore } from "./schedule";
 import { descendantIds, leafUnits, outlineToNodes } from "@/study/tree";
 import type { CurriculumNode, Module, StudyTask } from "@/study/types";
 
@@ -41,6 +42,8 @@ type StudyStore = {
   deleteModule: (id: string) => void;
 
   importOutline: (moduleId: string, text: string) => number;
+  /** Add a ready-made tree (e.g. from the AI syllabus breakdown). Returns how many nodes were added. */
+  importTree: (moduleId: string, tree: OutlineNode[]) => number;
   addNode: (moduleId: string, parentId: string | null, title: string) => string;
   updateNode: (id: string, patch: Partial<Pick<CurriculumNode, "title" | "contentType" | "estMinutes" | "mastery">>) => void;
   moveNode: (id: string, direction: -1 | 1) => void;
@@ -48,14 +51,21 @@ type StudyStore = {
 
   setTaskStatus: (id: string, status: StudyTask["status"]) => void;
   addManualTask: (moduleId: string, title: string, date: string, estMinutes?: number) => void;
+  /** "I'm stuck" on a task: the topic counts as shaky (more reviews) and a gentle revisit is planned. */
+  markStuck: (taskId: string) => void;
   deleteTask: (id: string) => void;
 
   addCard: (moduleId: string, front: string, back: string, nodeId?: string | null) => void;
+  addCards: (moduleId: string, cards: { front: string; back: string }[], nodeId?: string | null) => number;
   updateCard: (id: string, patch: Partial<Pick<Flashcard, "front" | "back" | "nodeId">>) => void;
   deleteCard: (id: string) => void;
   reviewCard: (id: string, rating: ReviewRating) => void;
 
-  /** Re-run the planner for one module or all of them. */
+  /** After the exam: record the grade and put the module away (it leaves the plan). */
+  archiveModule: (id: string, finalGrade: string | null) => void;
+  unarchiveModule: (id: string) => void;
+
+  /** Re-run the planner. All active modules are planned together (they share one budget). */
   replan: (moduleId?: string) => void;
 };
 
@@ -102,8 +112,9 @@ export const useStudyStore = create<StudyStore>()(
           };
         }),
 
-      importOutline: (moduleId, text) => {
-        const outline = parseOutline(text);
+      importOutline: (moduleId, text) => get().importTree(moduleId, parseOutline(text)),
+
+      importTree: (moduleId, outline) => {
         if (!outline.length) return 0;
         const now = Date.now();
         const start = get().nodes.filter((n) => n.moduleId === moduleId && n.parentId === null).length;
@@ -189,6 +200,18 @@ export const useStudyStore = create<StudyStore>()(
         }));
       },
 
+      markStuck: (taskId) => {
+        const task = get().tasks.find((t) => t.id === taskId);
+        if (!task) return;
+        const now = Date.now();
+        set((s) => ({
+          nodes: task.nodeId ? s.nodes.map((n) => (n.id === task.nodeId ? { ...n, mastery: Math.max(0, n.mastery - 0.2), updatedAt: now } : n)) : s.nodes,
+        }));
+        const topic = task.title.replace(/^(Learn|Review|Catch-up review|Extra review|Mixed practice):\s*/, "");
+        get().addManualTask(task.moduleId, `Revisit ${topic}: try another explanation, or ask someone`, addDays(dayKey(now), 1), 20);
+        get().replan();
+      },
+
       deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
 
       addCard: (moduleId, front, back, nodeId = null) => {
@@ -198,6 +221,18 @@ export const useStudyStore = create<StudyStore>()(
         const now = Date.now();
         set((s) => ({ cards: [...s.cards, { id: uid("card_"), moduleId, nodeId, front: f, back: b, fsrs: newCardState(new Date(now)), createdAt: now, updatedAt: now }] }));
         get().replan(moduleId);
+      },
+
+      addCards: (moduleId, cards, nodeId = null) => {
+        const now = Date.now();
+        const added: Flashcard[] = cards
+          .map((c) => ({ front: c.front.trim().slice(0, 1000), back: c.back.trim().slice(0, 2000) }))
+          .filter((c) => c.front && c.back)
+          .map((c) => ({ id: uid("card_"), moduleId, nodeId, ...c, fsrs: newCardState(new Date(now)), createdAt: now, updatedAt: now }));
+        if (!added.length) return 0;
+        set((s) => ({ cards: [...s.cards, ...added] }));
+        get().replan(moduleId);
+        return added.length;
       },
 
       updateCard: (id, patch) => set((s) => ({ cards: s.cards.map((c) => (c.id === id ? { ...c, ...patch, updatedAt: Date.now() } : c)) })),
@@ -220,29 +255,47 @@ export const useStudyStore = create<StudyStore>()(
         }));
       },
 
-      replan: (moduleId) => {
+      archiveModule: (id, finalGrade) => {
+        set((s) => ({
+          modules: s.modules.map((m) => (m.id === id ? { ...m, archivedAt: Date.now(), finalGrade: finalGrade?.trim() || null, updatedAt: Date.now() } : m)),
+          // Its unfinished plan goes away; history stays.
+          tasks: s.tasks.filter((t) => !(t.moduleId === id && t.source === "auto" && t.status === "todo")),
+        }));
+        get().replan();
+      },
+
+      unarchiveModule: (id) => {
+        set((s) => ({ modules: s.modules.map((m) => (m.id === id ? { ...m, archivedAt: null, updatedAt: Date.now() } : m)) }));
+        get().replan();
+      },
+
+      replan: () => {
         const s = get();
-        const now = Date.now();
-        const today = dayKey(now);
-        const targets = moduleId ? s.modules.filter((m) => m.id === moduleId) : s.modules;
-        let tasks = s.tasks;
-        const plans = { ...s.plans };
-        for (const m of targets) {
-          const dueCards = s.cards.filter((c) => c.moduleId === m.id && isDue(c.fsrs, new Date(now))).length;
-          const result = planModule({
+        const now = new Date();
+        const today = dayKey(now.getTime());
+        const schedule = useScheduleStore.getState();
+        const active = s.modules.filter((m) => !m.archivedAt);
+        const result = planAll({
+          modules: active.map((m) => ({
             moduleId: m.id,
             moduleName: m.name,
             examDate: m.examDate,
-            dailyMinutes: m.dailyMinutes,
             units: leafUnits(s.nodes, m.id),
-            today,
-            existing: tasks.filter((t) => t.moduleId === m.id),
-            dueCards,
-          });
-          tasks = [...tasks.filter((t) => t.moduleId !== m.id), ...result.tasks];
-          plans[m.id] = { warnings: result.warnings, summary: result.summary };
-        }
-        set({ tasks, plans, plannedFor: today });
+            existing: s.tasks.filter((t) => t.moduleId === m.id),
+            dueCards: s.cards.filter((c) => c.moduleId === m.id && isDue(c.fsrs, now)).length,
+          })),
+          today,
+          dailyBudget: schedule.dailyBudget,
+          availability: schedule.availability,
+          nowMinute: now.getHours() * 60 + now.getMinutes(),
+          paceFactor: schedule.pace.factor,
+        });
+        const activeIds = new Set(active.map((m) => m.id));
+        set({
+          tasks: [...s.tasks.filter((t) => !activeIds.has(t.moduleId) && !(t.source === "auto" && t.status === "todo")), ...result.tasks],
+          plans: result.modules,
+          plannedFor: today,
+        });
       },
     }),
     {

@@ -57,3 +57,36 @@ export function gradientPng(width = 96, height = 128): Buffer {
   }
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
 }
+
+/**
+ * A fresh room whose clock reads 09:00 today and whose whole week is free, so the planner always has
+ * room for today's blocks whatever time the suite runs.
+ */
+export async function studyRoom(page: Page) {
+  const nine = new Date();
+  nine.setHours(9, 0, 0, 0);
+  await page.clock.setFixedTime(nine);
+  await page.goto("/");
+  await page.evaluate(() => {
+    localStorage.clear();
+    const free = Array.from({ length: 7 }, () => "1".repeat(48));
+    localStorage.setItem("mila:schedule", JSON.stringify({ state: { dailyBudget: 120, availability: free, pace: { factor: 1, samples: 0 }, updatedAt: 1 }, version: 1 }));
+  });
+  await openRoom(page);
+}
+
+export function inDays(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export async function createModule(page: Page, name: string, outline: string, examInDays?: number) {
+  await objectBar(page).getByRole("button", { name: "Open the laptop to study" }).click();
+  await page.getByRole("button", { name: "Add your first module" }).click();
+  await page.getByLabel("Module name").fill(name);
+  if (examInDays) await page.getByLabel(/Exam date/).fill(inDays(examInDays));
+  await page.getByLabel(/Course outline/).fill(outline);
+  await page.getByRole("button", { name: "Create module" }).click();
+  await expect(page.getByRole("list", { name: "Curriculum" })).toBeVisible();
+}

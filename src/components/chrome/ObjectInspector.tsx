@@ -3,10 +3,12 @@
 import type { ReactNode } from "react";
 import { GlassSurface } from "@/components/glass/GlassSurface";
 import { CloseIcon } from "@/components/icons";
-import { closeDrawer } from "@/stores/actions";
+import { closeCalendar, closeDrawer } from "@/stores/actions";
 import type { RoomObjectId } from "@/stores/room";
 import { useUiStore } from "@/stores/ui";
 import { BedControls } from "./inspectors/BedControls";
+import { BuddyControls } from "./inspectors/BuddyControls";
+import { CalendarControls } from "./inspectors/CalendarControls";
 import { DrinkPicker } from "./inspectors/DrinkPicker";
 import { PaintingControls } from "./inspectors/PaintingControls";
 import { PhoneScreen } from "./inspectors/PhoneScreen";
@@ -20,6 +22,8 @@ const INSPECTORS: Partial<Record<RoomObjectId, { title: string; body: () => Reac
   painting: { title: "Painting", body: PaintingControls },
   phone: { title: "Phone", body: PhoneScreen },
   bed: { title: "In bed", body: BedControls },
+  calendar: { title: "Calendar", body: CalendarControls },
+  buddy: { title: "Study buddy", body: BuddyControls },
 };
 
 /** Quick controls for the object you just used (lamp, window, drink, painting, phone, bed…). */
@@ -31,7 +35,7 @@ export function ObjectInspector() {
   if (!inspect || !spec || sleeping) return null;
 
   const Body = spec.body;
-  const close = () => (inspect === "drawer" ? closeDrawer() : setInspect(null));
+  const close = () => (inspect === "drawer" ? closeDrawer() : inspect === "calendar" ? closeCalendar() : setInspect(null));
   return (
     <GlassSurface
       as="section"

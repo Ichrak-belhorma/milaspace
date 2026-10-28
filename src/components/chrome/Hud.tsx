@@ -3,6 +3,7 @@
 import { useUiStore } from "@/stores/ui";
 import { AccountPanel } from "./AccountPanel";
 import { AmbiencePanel } from "./AmbiencePanel";
+import { CheckInPrompt } from "./CheckInPrompt";
 import { Navbar } from "./Navbar";
 import { NotebookPanel } from "./NotebookPanel";
 import { ObjectBar } from "./ObjectBar";
@@ -52,6 +53,7 @@ export function Hud() {
             <TimerWidget />
           </div>
           <div className="order-1 flex flex-col items-center gap-2 sm:order-2 sm:absolute sm:inset-x-0 sm:bottom-0 sm:mx-auto sm:w-fit">
+            <CheckInPrompt />
             <ObjectInspector />
             <Toast />
             <PoseBar />

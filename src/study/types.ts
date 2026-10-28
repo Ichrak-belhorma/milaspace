@@ -11,8 +11,12 @@ export type Module = {
   targetGrade: string | null;
   /** Pasted course outline or syllabus text. */
   syllabusText: string | null;
-  /** Daily study budget for this module, in minutes. */
+  /** Legacy per-module budget; planning now uses the global budget in the schedule settings. */
   dailyMinutes: number;
+  /** Set when the exam is over and the module is put away. */
+  archivedAt?: number | null;
+  /** The grade actually obtained. */
+  finalGrade?: string | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -50,6 +54,8 @@ export type StudyTask = {
   completedAt: number | null;
   /** For practice tasks: the units being interleaved. */
   nodeIds?: string[];
+  /** Planned start, minutes from midnight (null = any time that day). */
+  start?: number | null;
   /** Last user change (status, edit). Generated tasks have none until the user touches them. */
   updatedAt?: number;
 };

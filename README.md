@@ -3,8 +3,8 @@
 A cozy, fully customizable virtual study space by **Mila Space**: an atmospheric 3D study room you make
 your own, plus a study engine that turns "exam on June 12" into daily progress.
 
-> Status: **Phase 1 (the Space)** and **Phase 2 (accounts and the study engine)** are built; the AI parts of
-> Phase 2 have their routes and contracts in place but are switched off. See [`docs/PLAN.md`](docs/PLAN.md).
+> Status: **Phase 1 (the Space)** and **Phase 2 (accounts and the study engine, including AI)** are built.
+> AI needs a server-side Anthropic key. See [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Run it
 
@@ -26,11 +26,17 @@ npm run dev          # http://localhost:3000
 Copy `.env.example` to `.env.local` for cloud sync (it already contains the project's public Supabase URL
 and publishable key). Without it Mila runs fully local: everything is saved in the browser.
 
+For AI (syllabus PDF → curriculum and plan, notes → flashcards), add `ANTHROPIC_API_KEY` to `.env.local` (server
+only, never `NEXT_PUBLIC_`). `MILA_AI_MODEL` optionally overrides the default model (`claude-opus-5-5`). Without a
+key the AI buttons show "off" and everything else works. AI routes require sign-in when Supabase is configured and
+are rate-limited to 12 requests per hour per user.
+
 ## Supabase setup (once)
 
 1. In the Supabase dashboard → SQL editor, run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
-   (tables, row-level security, the `room-images` storage bucket). `0002_future.sql` adds the Phase 3/4 tables;
-   it is safe to run now or later.
+   (tables, row-level security, the `room-images` storage bucket), then
+   [`0003_schedule.sql`](supabase/migrations/0003_schedule.sql) (module archive and grade, task time blocks,
+   task-linked focus sessions). `0002_future.sql` adds the Phase 3/4 tables; it is safe to run now or later.
 2. Authentication → URL configuration: set the Site URL (e.g. `http://localhost:3000`) and add
    `http://localhost:3000/auth/callback` (and your production equivalent) to the redirect URLs.
 3. Sign up from the Account button in the navbar. With email confirmation on, the email link signs you in.
@@ -57,7 +63,7 @@ src/
   timer/        Pure Pomodoro state machine + focus stats (unit-tested)
   study/        Study engine: outline parser, backward planner, FSRS wrapper, curriculum tree (all pure, unit-tested)
   lib/sync/     Local-first Supabase sync (pure reconcile + validated row mappers + engine)
-  lib/ai/       AI contracts (zod) and the route guard; app/api/ai/* validate input and answer 501 for now
+  lib/ai/       AI contracts (zod), prompts, structured-output calls (server only); app/api/ai/* routes
   stores/       Zustand stores (theme, room, timer, audio, ui, notebook) and shared object actions
   items/        Décor item registry (prices are in focus minutes; the shop arrives in Phase 3)
 ```
@@ -109,21 +115,40 @@ Click things (or use the object bar at the bottom, which mirrors every object fo
 - **Drink**: coffee, tea, matcha latte, hot chocolate or water; hot drinks steam until they cool.
 - **Painting**: hang your own picture (cropped to the frame, kept on the device, synced when signed in).
 - **Curtains**: draw them to dim the daylight and muffle the weather.
+- **Wall calendar**: exam days circled in red, studied days crossed off by hand. Click to zoom in, pick a day to see
+  its plan, page through months, and export the whole plan as `.ics` for Google or Apple Calendar.
+- **Study buddy**: someone working at the desk under the window (body doubling). They type, write and think while
+  you focus, and stretch or read on your breaks. "Start together" begins a 5-minute session. Can be hidden.
+- **Visible time**: a sticky note counts down to your next exam; the candle burns down during a focus session.
+- **Progress**: the plant grows with your study days (flowers after 30), and finished modules become labelled
+  boxes on the shelf.
+- **Phone alarm**: set a wake-up time on the phone; it rings (and wakes you from a nap) with Stop and Snooze.
 - Lamp, window and weather, drawer, laptop (study view) and fidget spinner as before.
 
 ## Studying
 
-Laptop → **Modules**: add a module (only the name is required), optionally an exam date, target grade, daily
-time and a pasted course outline (indent subtopics; "(30m)" or "[2h]" sets time). The outline becomes an editable
-chapter → concept → skill tree, and the planner works backwards from the exam: new material first (fit to your
-daily time), reviews 1, 3 and 7 days after each topic, a buffer before the exam with interleaved mixed practice,
-and a light final review. Missed or skipped work rolls forward; shaky topics get extra reviews; an impossible
-schedule shows a warning instead of silently overpacking. **Today** (and the desk notebook) list the day's tasks.
-**Flashcards** uses FSRS spaced repetition.
+Laptop → **Modules**: add a module (only the name is required), optionally an exam date, target grade, a
+pasted course outline (indent subtopics; "(30m)" or "[2h]" sets time) or, with AI on, a **syllabus PDF** that is
+broken down into topics for you. The curriculum is an editable chapter → concept → skill tree.
+
+**Schedule**: one daily study budget shared by all modules, and a weekly grid of when you're free (drag to paint).
+The planner fits everything into that time: modules compete by exam date (the nearest exam goes first), new
+material first, reviews 1, 3 and 7 days after each topic, a buffer before each exam with interleaved practice,
+and timed blocks inside your free hours. Estimates learn from you: finishing tasks teaches Mila your pace (e.g.
+"you take about 1.4× the estimate"). An impossible schedule shows a warning instead of silently overpacking.
+
+**Today** (and the desk notebook) list the day's blocks with start times. Press play on a task to focus on it;
+when the session ends Mila asks: done, need more time, or stuck (stuck lowers that topic's mastery and adds a
+gentle "revisit" task tomorrow). "Just start: 5 minutes" commits you to five minutes on the next task, then asks
+whether to keep going. Missed work quietly moves forward: no red overdue counters.
+
+**Flashcards** uses FSRS spaced repetition; with AI on, paste notes to generate cards.
+
+After the exam, **Finish module** records your grade against your target and puts the module on the shelf.
 
 ## Still to come
 
-- AI curriculum breakdown and flashcard generation (routes and contracts exist; buttons say "soon").
+- Polaroids for study milestones.
 - Practice (math with KaTeX, coding with tests) and the focus-minute currency, shop and décor slots: Phase 3.
 - Community profiles, theme sharing, study-together rooms: Phase 4 (tables in `0002_future.sql`).
 - All 3D models are placeholder primitives; all audio is procedural.

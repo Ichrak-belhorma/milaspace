@@ -251,6 +251,20 @@ export const UserIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const CalendarIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="1.5" />
+    <path d="M3.5 10h17M8 3v4M16 3v4M8 14l3 3M11 14l-3 3" />
+  </Icon>
+);
+
+export const BuddyIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="9" cy="8" r="3" />
+    <path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.5M17.5 14.5A5.5 5.5 0 0 1 20.5 20" />
+  </Icon>
+);
+
 export function MilaMark({ size = 26 }: { size?: number }) {
   // A tiny desk lamp over a book: the Mila mark.
   return (

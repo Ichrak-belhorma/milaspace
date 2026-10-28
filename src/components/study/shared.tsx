@@ -35,13 +35,23 @@ export function ComingSoon({ title, children }: { title: string; children: React
   );
 }
 
-export function AiButton({ label }: { label: string }) {
+/**
+ * Button for an AI action. Disabled (with the reason) while the server check runs or when AI isn't
+ * switched on; shows a working label while busy.
+ */
+export function AiButton({ label, busyLabel, enabled, busy = false, disabled = false, onClick }: { label: string; busyLabel?: string; enabled: boolean | null; busy?: boolean; disabled?: boolean; onClick?: () => void }) {
+  const off = enabled === false;
   return (
-    <button type="button" className="btn btn-soft text-sm" disabled title="AI features arrive in a later update" aria-describedby="ai-soon">
-      <SparkleIcon size={16} /> {label}
-      <span id="ai-soon" className="well px-1.5 text-[0.7rem]">
-        soon
-      </span>
+    <button
+      type="button"
+      className="btn btn-soft text-sm"
+      disabled={!enabled || busy || disabled}
+      aria-busy={busy || undefined}
+      title={off ? "AI isn't switched on for this Mila (the server needs an Anthropic key)" : undefined}
+      onClick={onClick}
+    >
+      <SparkleIcon size={16} className={busy ? "anim-pulse" : undefined} /> {busy ? (busyLabel ?? "Working…") : label}
+      {off && <span className="well px-1.5 text-[0.7rem]">off</span>}
     </button>
   );
 }

@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { dayKey } from "@/lib/day";
 import { localJSONStorage } from "@/lib/storage";
 import type { RoomObjectId } from "./room";
 
 export type PanelId = "theme" | "ambience" | "notebook" | "timer" | "account";
-export type StudyTab = "today" | "modules" | "flashcards" | "practice";
+export type StudyTab = "today" | "modules" | "schedule" | "flashcards" | "practice";
 export type MotionPref = "system" | "reduce" | "full";
 
 /** Where you are in the room. */
@@ -13,7 +14,7 @@ export type Pose = "standing" | "seated" | "lying";
 export const CLOSEUP_OBJECTS = ["fidget", "notebook", "mug", "lamp"] as const;
 export type Closeup = (typeof CLOSEUP_OBJECTS)[number];
 /** What you are looking at closely: the laptop (study view), into the drawer, or a desk object. */
-export type Focus = "laptop" | "drawer" | Closeup;
+export type Focus = "laptop" | "drawer" | "calendar" | Closeup;
 
 export function isCloseup(id: string): id is Closeup {
   return (CLOSEUP_OBJECTS as readonly string[]).includes(id);
@@ -28,11 +29,17 @@ type UiStore = {
   /** Epoch ms when a nap alarm wakes you, or null to rest without an alarm. */
   napEndsAt: number | null;
   studyTab: StudyTab;
+  /** Wall calendar: shown month (YYYY-MM) and selected day. */
+  calendar: { month: string; day: string | null };
+  setCalendar: (patch: Partial<UiStore["calendar"]>) => void;
   /** Object whose quick controls are showing. */
   inspect: RoomObjectId | null;
   /** Object highlighted from the keyboard object bar or by pointer hover. */
   highlight: RoomObjectId | null;
   motion: MotionPref;
+  /** The phone alarm is ringing. */
+  alarmRinging: boolean;
+  setAlarmRinging: (ringing: boolean) => void;
   /** Latest short status message (shown briefly and read by screen readers). */
   announcement: { id: number; text: string } | null;
   togglePanel: (panel: PanelId) => void;
@@ -67,9 +74,13 @@ export const useUiStore = create<UiStore>()(
       sleeping: false,
       napEndsAt: null,
       studyTab: "today",
+      calendar: { month: dayKey(Date.now()).slice(0, 7), day: null },
+      setCalendar: (patch) => set((s) => ({ calendar: { ...s.calendar, ...patch } })),
       inspect: null,
       highlight: null,
       motion: "system",
+      alarmRinging: false,
+      setAlarmRinging: (alarmRinging) => set({ alarmRinging }),
       announcement: null,
 
       togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),

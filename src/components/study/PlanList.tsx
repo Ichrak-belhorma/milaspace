@@ -3,6 +3,8 @@
 import { CheckIcon, PlayIcon, SkipIcon } from "@/components/icons";
 import { useStudyStore, useStudyTasksForToday } from "@/stores/study";
 import { useTimerStore } from "@/stores/timer";
+import { focusOnTask } from "@/stores/focusActions";
+import { formatMinute } from "@/study/availability";
 import { KindBadge, minutesLabel } from "./shared";
 
 /** Today's generated study tasks across modules: check off, skip (it moves), or start focusing on one. */
@@ -10,10 +12,7 @@ export function PlanList({ compact = false }: { compact?: boolean }) {
   const tasks = useStudyTasksForToday();
   const modules = useStudyStore((s) => s.modules);
   const setTaskStatus = useStudyStore((s) => s.setTaskStatus);
-  const timerStatus = useTimerStore((s) => s.timer.status);
-  const timerPhase = useTimerStore((s) => s.timer.phase);
-  const toggleTimer = useTimerStore((s) => s.toggle);
-  const canStart = timerStatus !== "running" && timerPhase === "focus";
+  const activeId = useTimerStore((s) => s.activeTask?.taskId);
 
   return (
     <ul className="flex flex-col gap-1.5">
@@ -26,13 +25,16 @@ export function PlanList({ compact = false }: { compact?: boolean }) {
             <label htmlFor={`st-${t.id}`} className={`min-w-0 flex-1 text-sm ${t.status !== "todo" ? "text-ink-muted line-through" : ""}`}>
               <span className="block truncate">{t.title}</span>
               <span className="block text-xs text-ink-muted">
+                {t.start != null && `${formatMinute(t.start)} · `}
                 {mod?.name} · {minutesLabel(t.estMinutes)}
               </span>
             </label>
             {t.status === "todo" && (
               <>
-                {canStart && !compact && (
-                  <button type="button" className="btn btn-icon min-h-8 min-w-8 p-1" onClick={toggleTimer} aria-label={`Start a focus session for ${t.title}`} title="Start focusing">
+                {activeId === t.id ? (
+                  <span className="well px-1.5 py-0.5 text-[0.7rem] font-semibold">now</span>
+                ) : (
+                  <button type="button" className="btn btn-icon min-h-8 min-w-8 p-1" onClick={() => focusOnTask(t)} aria-label={`Focus on ${t.title}`} title="Start a focus session on this">
                     <PlayIcon size={14} />
                   </button>
                 )}

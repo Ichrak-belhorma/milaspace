@@ -38,6 +38,9 @@ export type FocusSession = {
   endedAt: number;
   minutes: number;
   completed: boolean;
+  /** The planned task this session was for, if any. */
+  taskId?: string | null;
+  moduleId?: string | null;
 };
 
 export const DEFAULT_SETTINGS: TimerSettings = {
@@ -162,6 +165,16 @@ export function skip(state: TimerState, s: TimerSettings, now: number, id: strin
 export function reset(state: TimerState, s: TimerSettings, now: number, id: string): Transition {
   const session = sessionFrom(state, now, false, id);
   return { state: enter(state.phase, state.cycleCount, s, now, false), session, finished: null };
+}
+
+/** Start a focus run of a custom length (e.g. a 5-minute "just start" session), keeping the cycle. */
+export function startFor(state: TimerState, s: TimerSettings, now: number, ms: number): TimerState {
+  return start({ ...initialState(s), cycleCount: state.cycleCount, remainingMs: Math.max(60_000, Math.round(ms)) }, now);
+}
+
+/** Back to an idle, full-length focus phase without counting a cycle (after a starter run). */
+export function idleFocus(state: TimerState, s: TimerSettings): TimerState {
+  return { ...initialState(s), cycleCount: state.cycleCount };
 }
 
 /** Apply new settings: an untouched idle phase picks up its new length immediately. */

@@ -1,9 +1,13 @@
 "use client";
 
 import { useId, useState } from "react";
-import { TrashIcon } from "@/components/icons";
+import { TrashIcon, UploadIcon } from "@/components/icons";
+import { useNow } from "@/hooks/useNow";
+import { dayKey } from "@/lib/day";
 import { useStudyStore } from "@/stores/study";
-import { countLeaves, parseOutline } from "@/study/outline";
+import { MAX_PDF_BYTES } from "@/lib/ai/contracts";
+import { fileToBase64, postAi, useAiEnabled } from "@/lib/ai/browser";
+import { countLeaves, parseOutline, type OutlineNode } from "@/study/outline";
 import { CurriculumEditor } from "./CurriculumEditor";
 import { AiButton, KindBadge, minutesLabel } from "./shared";
 
@@ -15,10 +19,35 @@ const parseDay = (key: string) => {
 
 function OutlineImport({ moduleId }: { moduleId: string }) {
   const importOutline = useStudyStore((s) => s.importOutline);
+  const importTree = useStudyStore((s) => s.importTree);
+  const mod = useStudyStore((s) => s.modules.find((m) => m.id === moduleId));
+  const aiEnabled = useAiEnabled();
   const [text, setText] = useState("");
+  const [pdf, setPdf] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const id = useId();
   const preview = text.trim() ? countLeaves(parseOutline(text)) : 0;
+
+  const breakDown = async () => {
+    if (!mod) return;
+    if (pdf && pdf.size > MAX_PDF_BYTES) return setMessage("That PDF is over 10 MB. Try a smaller export or paste the text.");
+    setBusy(true);
+    setMessage(pdf ? "Reading your syllabus… this can take a minute." : "Breaking it down…");
+    const result = await postAi<{ chapters: OutlineNode[] }>("/api/ai/curriculum", {
+      moduleName: mod.name,
+      examDate: mod.examDate ?? undefined,
+      syllabusText: text.trim() || undefined,
+      syllabusPdf: pdf ? await fileToBase64(pdf) : undefined,
+    });
+    setBusy(false);
+    if (!result.ok) return setMessage(result.message);
+    const n = importTree(moduleId, result.data.chapters);
+    setMessage(`Added ${n} topic${n === 1 ? "" : "s"} from your syllabus. Edit anything that looks off; your plan is updated.`);
+    setText("");
+    setPdf(null);
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="text-sm">
@@ -29,7 +58,7 @@ function OutlineImport({ moduleId }: { moduleId: string }) {
         <button
           type="button"
           className="btn btn-accent text-sm"
-          disabled={!preview}
+          disabled={!preview || busy}
           onClick={() => {
             const n = importOutline(moduleId, text);
             setMessage(`Added ${n} topic${n === 1 ? "" : "s"}.`);
@@ -38,13 +67,19 @@ function OutlineImport({ moduleId }: { moduleId: string }) {
         >
           Add {preview || ""} topic{preview === 1 ? "" : "s"}
         </button>
-        <AiButton label="Break down my syllabus" />
-        {message && (
-          <span role="status" className="text-sm">
-            {message}
-          </span>
+        {aiEnabled !== false && (
+          <label className={`btn btn-soft text-sm ${busy || !aiEnabled ? "opacity-60" : "cursor-pointer"}`}>
+            <UploadIcon size={16} /> {pdf ? pdf.name.slice(0, 28) : "Syllabus PDF"}
+            <input type="file" accept="application/pdf" className="sr-only" disabled={busy || !aiEnabled} onChange={(e) => setPdf(e.target.files?.[0] ?? null)} />
+          </label>
         )}
+        <AiButton label="Break down my syllabus" busyLabel="Reading…" enabled={aiEnabled} busy={busy} disabled={!pdf && !text.trim()} onClick={breakDown} />
       </div>
+      {message && (
+        <p role="status" className="text-sm">
+          {message}
+        </p>
+      )}
     </div>
   );
 }
@@ -101,7 +136,40 @@ function PlanOverview({ moduleId }: { moduleId: string }) {
   );
 }
 
-/** One mod: its settings, curriculum and plan. */
+/** After the exam: how did it go? Compare with the target, then put the module away on the shelf. */
+function FinishModule({ moduleId }: { moduleId: string }) {
+  const mod = useStudyStore((s) => s.modules.find((m) => m.id === moduleId));
+  const archiveModule = useStudyStore((s) => s.archiveModule);
+  const [grade, setGrade] = useState("");
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const today = dayKey(useNow(60_000));
+  if (!mod) return null;
+  const examPassed = Boolean(mod.examDate && mod.examDate < today);
+  if (!open && !examPassed)
+    return (
+      <button type="button" className="btn btn-soft self-start text-sm" onClick={() => setOpen(true)}>
+        Finish this module
+      </button>
+    );
+  return (
+    <section aria-labelledby={`${id}-finish`} className="well flex flex-col gap-2 p-3">
+      <h3 id={`${id}-finish`} className="font-display">
+        {examPassed ? "How did the exam go?" : "Finish this module"}
+      </h3>
+      <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-grade`}>
+        Grade you got {mod.targetGrade && <span className="text-xs text-ink-muted">(you aimed for {mod.targetGrade})</span>}
+        <input id={`${id}-grade`} className="field" maxLength={20} value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="e.g. B+, 15/20, passed" />
+      </label>
+      <p className="text-xs text-ink-muted">Whatever it was, you showed up. The module goes into a box on your shelf, and its history stays.</p>
+      <button type="button" className="btn btn-accent self-start text-sm" onClick={() => archiveModule(mod.id, grade)}>
+        Put it on the shelf
+      </button>
+    </section>
+  );
+}
+
+/** One module: its settings, curriculum and plan. */
 export function ModuleDetail({ moduleId, onDeleted }: { moduleId: string; onDeleted: () => void }) {
   const mod = useStudyStore((s) => s.modules.find((m) => m.id === moduleId));
   const { updateModule, deleteModule } = useStudyStore.getState();
@@ -128,10 +196,6 @@ export function ModuleDetail({ moduleId, onDeleted }: { moduleId: string; onDele
             Target grade
             <input id={`${id}-grade`} className="field" defaultValue={mod.targetGrade ?? ""} maxLength={20} onBlur={(e) => updateModule(mod.id, { targetGrade: e.target.value.trim() || null })} />
           </label>
-          <label className="flex flex-col gap-1 text-sm" htmlFor={`${id}-minutes`}>
-            Daily study time: {mod.dailyMinutes} min
-            <input id={`${id}-minutes`} type="range" min={15} max={240} step={15} value={mod.dailyMinutes} onChange={(e) => updateModule(mod.id, { dailyMinutes: Number(e.target.value) })} />
-          </label>
         </div>
       </section>
 
@@ -149,6 +213,8 @@ export function ModuleDetail({ moduleId, onDeleted }: { moduleId: string; onDele
         <CurriculumEditor moduleId={mod.id} />
         <OutlineImport moduleId={mod.id} />
       </section>
+
+      <FinishModule moduleId={mod.id} />
 
       <div className="flex items-center gap-2">
         {confirming ? (
@@ -170,7 +236,7 @@ export function ModuleDetail({ moduleId, onDeleted }: { moduleId: string; onDele
           </>
         ) : (
           <button type="button" className="btn btn-soft text-sm" onClick={() => setConfirming(true)}>
-            <TrashIcon size={16} /> Delete mod
+            <TrashIcon size={16} /> Delete module
           </button>
         )}
       </div>

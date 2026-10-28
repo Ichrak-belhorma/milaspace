@@ -5,7 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { AiError, AiErrorCode } from "./contracts";
 
-const STATUS: Record<AiErrorCode, number> = { not_implemented: 501, unauthorized: 401, invalid_input: 400, rate_limited: 429, upstream: 502 };
+const STATUS: Record<AiErrorCode, number> = { not_configured: 501, not_implemented: 501, unauthorized: 401, invalid_input: 400, rate_limited: 429, upstream: 502 };
 
 export function aiError(error: AiErrorCode, message: string) {
   return NextResponse.json<AiError>({ error, message }, { status: STATUS[error] });

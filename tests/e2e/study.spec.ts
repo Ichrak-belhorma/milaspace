@@ -1,14 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { freshRoom, objectBar, SHOTS } from "./helpers";
-
-function inDays(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+import { freshRoom, inDays, objectBar, SHOTS, studyRoom } from "./helpers";
 
 test("module → outline → backward plan → today's tasks → flashcards", async ({ page }) => {
-  await freshRoom(page);
+  await studyRoom(page);
   await objectBar(page).getByRole("button", { name: "Open the laptop to study" }).click();
   await expect(page.getByRole("heading", { name: "Study desk" })).toBeFocused();
   await page.getByRole("button", { name: "Add your first module" }).click();
@@ -49,6 +43,10 @@ test("module → outline → backward plan → today's tasks → flashcards", as
   await page.getByRole("group", { name: "How well did you remember?" }).getByRole("button", { name: /^Good/ }).click();
   await expect(page.getByText(/Done: 1 card reviewed/)).toBeVisible();
 
+  // AI needs a server key; without one the buttons say so instead of failing.
+  await page.getByRole("tab", { name: "Modules" }).click();
+  await expect(page.getByRole("button", { name: /Break down my syllabus/ })).toBeDisabled();
+
   // Everything persists locally.
   await page.reload();
   await page.waitForSelector("canvas");
@@ -58,7 +56,7 @@ test("module → outline → backward plan → today's tasks → flashcards", as
 });
 
 test("the notebook shows today's study plan", async ({ page }) => {
-  await freshRoom(page);
+  await studyRoom(page);
   await objectBar(page).getByRole("button", { name: "Open the laptop to study" }).click();
   await page.getByRole("button", { name: "Add your first module" }).click();
   await page.getByLabel("Module name").fill("History");
@@ -81,6 +79,7 @@ test("account panel offers sign-in (cloud sync is optional)", async ({ page }) =
 });
 
 test("AI routes validate input and require sign-in", async ({ request }) => {
+  expect(await (await request.get("/api/ai/status")).json()).toEqual({ enabled: false });
   const bad = await request.post("/api/ai/curriculum", { data: { moduleName: "" } });
   expect(bad.status()).toBe(400);
   const anon = await request.post("/api/ai/curriculum", { data: { moduleName: "Bio", syllabusText: "Cells and genetics" } });

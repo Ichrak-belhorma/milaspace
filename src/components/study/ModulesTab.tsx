@@ -9,7 +9,10 @@ import { ModuleForm } from "./ModuleForm";
 const dateFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
 
 export function ModulesTab() {
-  const modules = useStudyStore((s) => s.modules);
+  const all = useStudyStore((s) => s.modules);
+  const unarchiveModule = useStudyStore((s) => s.unarchiveModule);
+  const modules = all.filter((m) => !m.archivedAt);
+  const finished = all.filter((m) => m.archivedAt);
   const [selected, setSelected] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const current = modules.find((m) => m.id === selected) ?? (adding ? null : modules[0]);
@@ -36,6 +39,25 @@ export function ModulesTab() {
         <button type="button" className="btn btn-accent text-sm" onClick={() => setAdding(true)} aria-pressed={adding}>
           <PlusIcon size={16} /> New module
         </button>
+        {finished.length > 0 && (
+          <details className="mt-2 text-sm">
+            <summary className="label cursor-pointer">On the shelf ({finished.length})</summary>
+            <ul className="mt-1 flex flex-col gap-1">
+              {finished.map((m) => (
+                <li key={m.id} className="well flex items-center gap-2 px-2 py-1">
+                  <span className="min-w-0 flex-1 truncate">
+                    {m.name}
+                    {m.finalGrade && <span className="text-ink-muted"> · {m.finalGrade}</span>}
+                    {m.targetGrade && <span className="text-ink-muted"> (aim {m.targetGrade})</span>}
+                  </span>
+                  <button type="button" className="btn min-h-7 px-2 py-0.5 text-xs" onClick={() => unarchiveModule(m.id)}>
+                    Bring back
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </nav>
       <div>
         {adding || !current ? (

@@ -1,7 +1,8 @@
 "use client";
 
 import { GlassSurface } from "@/components/glass/GlassSurface";
-import { FlameIcon, PauseIcon, PlayIcon, ResetIcon, SkipIcon, SlidersIcon } from "@/components/icons";
+import { FlameIcon, PauseIcon, PlayIcon, ResetIcon, SkipIcon, SlidersIcon, SparkleIcon } from "@/components/icons";
+import { justStart } from "@/stores/focusActions";
 import { useNow } from "@/hooks/useNow";
 import { dayKey } from "@/lib/day";
 import { useTimerStore } from "@/stores/timer";
@@ -17,6 +18,8 @@ export function TimerWidget() {
   const settings = useTimerStore((s) => s.settings);
   const sessions = useTimerStore((s) => s.sessions);
   const { toggle, skip, reset } = useTimerStore.getState();
+  const activeTask = useTimerStore((s) => s.activeTask);
+  const starter = useTimerStore((s) => s.starter);
   const panel = useUiStore((s) => s.panel);
   const togglePanel = useUiStore((s) => s.togglePanel);
   const now = useNow(timer.status === "running" ? 500 : 30_000);
@@ -65,10 +68,20 @@ export function TimerWidget() {
         </span>
       </div>
 
+      {(activeTask || starter) && (
+        <p className="-mt-1 truncate text-sm" title={activeTask?.title}>
+          {starter ? "Just 5 minutes" : "On"}: <span className="font-semibold">{activeTask?.title ?? "anything small"}</span>
+        </p>
+      )}
       <div className="h-1.5 overflow-hidden rounded-full bg-ink/15" aria-hidden>
         <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${Math.min(100, progress * 100)}%` }} />
       </div>
 
+      {timer.status === "idle" && timer.phase === "focus" && !activeTask && (
+        <button type="button" className="btn btn-soft text-sm" onClick={justStart} title="Commit to five minutes on your next task. Starting is the hard part.">
+          <SparkleIcon size={16} /> Just start: 5 minutes
+        </button>
+      )}
       <div className="flex gap-2">
         <button type="button" className="btn btn-accent flex-1" onClick={toggle}>
           {running ? <PauseIcon size={16} /> : <PlayIcon size={16} />}

@@ -13,6 +13,9 @@ import { Laptop } from "./objects/Laptop";
 import { Mug } from "./objects/Mug";
 import { Notebook } from "./objects/Notebook";
 import { NightstandWithPhone } from "./objects/Phone";
+import { ArchiveBoxes, CountdownNote, GrowingPlant } from "./objects/Progress";
+import { StudyBuddy } from "./objects/StudyBuddy";
+import { WallCalendar } from "./objects/WallCalendar";
 import { Window } from "./objects/Window";
 import { SLOTS, type SlotId } from "./slots";
 import { useInteractable } from "./useInteractable";
@@ -55,12 +58,14 @@ export function Room() {
       <DeskSeat />
       <Bed />
       <NightstandWithPhone />
+      <WallCalendar />
+      <StudyBuddy />
       <group position={[POSITIONS.shelf[0], POSITIONS.shelf[1], POSITIONS.shelf[2]]}>
         <Asset id="shelf" />
       </group>
-      <group position={POSITIONS.plant}>
-        <Asset id="plant" />
-      </group>
+      <GrowingPlant />
+      <ArchiveBoxes />
+      <CountdownNote />
       <DecorSlots />
 
       <Window />

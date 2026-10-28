@@ -3,6 +3,8 @@
 import type { ComponentType } from "react";
 import {
   BedIcon,
+  BuddyIcon,
+  CalendarIcon,
   ChairIcon,
   CoffeeIcon,
   CurtainsIcon,
@@ -24,6 +26,7 @@ const ICONS: Record<RoomObjectId, ComponentType<{ size?: number }>> = {
   window: WindowIcon,
   curtains: CurtainsIcon,
   painting: FrameIcon,
+  calendar: CalendarIcon,
   lamp: LampIcon,
   laptop: LaptopIcon,
   notebook: NotebookIcon,
@@ -33,6 +36,7 @@ const ICONS: Record<RoomObjectId, ComponentType<{ size?: number }>> = {
   desk: ChairIcon,
   phone: PhoneIcon,
   bed: BedIcon,
+  buddy: BuddyIcon,
 };
 
 /**

@@ -80,6 +80,14 @@ export function activateObject(id: RoomObjectId): void {
     case "phone":
       ui.setInspect("phone");
       break;
+    case "buddy":
+      ui.setInspect("buddy");
+      break;
+    case "calendar":
+      if (ui.pose === "lying") ui.setPose("standing");
+      ui.setFocus("calendar");
+      ui.setInspect("calendar");
+      break;
     case "painting":
       ui.setInspect("painting");
       break;
@@ -106,6 +114,10 @@ export function closeDrawer(): void {
 /** Esc and clicks on empty space: undo the innermost thing, closing the drawer when its peek is next. */
 export function dismissTop(): boolean {
   const ui = useUiStore.getState();
+  if (!ui.sleeping && (ui.inspect === "calendar" || (!ui.inspect && !ui.panel && ui.focus === "calendar"))) {
+    closeCalendar();
+    return true;
+  }
   const drawerIsNext = !ui.sleeping && (ui.inspect === "drawer" || (!ui.inspect && !ui.panel && ui.focus === "drawer"));
   if (drawerIsNext) {
     closeDrawer();
@@ -114,10 +126,17 @@ export function dismissTop(): boolean {
   return ui.dismiss();
 }
 
+export function closeCalendar(): void {
+  const ui = useUiStore.getState();
+  if (ui.focus === "calendar") ui.setFocus(null);
+  if (ui.inspect === "calendar") ui.setInspect(null);
+}
+
 /** A click in the room that hit nothing interactive: close quick controls or step back from a close-up. */
 export function missedClick(): void {
   const ui = useUiStore.getState();
   if (ui.inspect === "drawer" || ui.focus === "drawer") closeDrawer();
+  else if (ui.inspect === "calendar" || ui.focus === "calendar") closeCalendar();
   else if (ui.inspect) ui.setInspect(null);
   else if (ui.focus && isCloseup(ui.focus)) ui.setFocus(null);
 }
@@ -126,6 +145,8 @@ export const OBJECT_LABELS: Record<RoomObjectId, string> = {
   window: "Window",
   curtains: "Curtains",
   painting: "Painting",
+  calendar: "Wall calendar",
+  buddy: "Study buddy",
   lamp: "Desk lamp",
   laptop: "Laptop",
   notebook: "Notebook",
@@ -150,6 +171,10 @@ export function objectActionLabel(id: RoomObjectId): string {
       return room.curtainsClosed ? "Open the curtains" : "Draw the curtains";
     case "painting":
       return "Change the painting";
+    case "calendar":
+      return "Look at the calendar";
+    case "buddy":
+      return "Your study buddy";
     case "mug":
       return !room.drink.kind ? "Make a drink" : room.drink.sipsLeft > 0 ? "Take a sip" : "Clear the empty cup";
     case "drawer":

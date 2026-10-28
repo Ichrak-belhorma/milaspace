@@ -19,7 +19,7 @@ function swish(ctx: AudioContext, out: AudioNode, opts: { t?: number; from: numb
   src.stop(t + opts.length + 0.05);
 }
 
-export const SFX = ["click", "switch", "chime", "pour", "sip", "drawer", "window", "rustle", "flop", "curtain", "tap", "chair"] as const;
+export const SFX = ["click", "switch", "chime", "pour", "sip", "drawer", "window", "rustle", "flop", "curtain", "tap", "chair", "alarm"] as const;
 export type SfxId = (typeof SFX)[number];
 
 /** One-shot UI and room sounds, synthesized so Phase 1 ships without audio files. */
@@ -77,6 +77,13 @@ export function playSfx(ctx: AudioContext, out: AudioNode, id: SfxId): void {
       tone(ctx, out, { t: t + 0.3, freq: 95, peak: 0.3, decay: 0.12 });
       break;
     }
+    case "alarm":
+      // A gentle marimba-like arpeggio, not a klaxon.
+      [523.25, 659.25, 783.99, 1046.5, 783.99, 659.25].forEach((f, i) => {
+        tone(ctx, out, { t: t + i * 0.16, freq: f, peak: 0.2, attack: 0.005, decay: 0.45 });
+        tone(ctx, out, { t: t + i * 0.16, freq: f * 4, peak: 0.03, attack: 0.005, decay: 0.12 });
+      });
+      break;
     case "rustle":
       swish(ctx, out, { from: rand(1500, 2400), to: rand(2400, 3600), peak: rand(0.05, 0.1), attack: 0.09, length: rand(0.3, 0.5) });
       break;

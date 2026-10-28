@@ -13,7 +13,7 @@ export function PoseBar() {
   const inspect = useUiStore((s) => s.inspect);
   const { setFocus, setPose, setInspect } = useUiStore.getState();
   const closeup = focus && isCloseup(focus) ? focus : null;
-  if (sleeping || pose === "standing" || focus === "laptop" || focus === "drawer") return null;
+  if (sleeping || pose === "standing" || focus === "laptop" || focus === "drawer" || focus === "calendar") return null;
 
   const label = closeup ? `Looking at the ${OBJECT_LABELS[closeup].toLowerCase()}` : pose === "seated" ? "At your desk" : "In bed";
   return (

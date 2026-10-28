@@ -100,3 +100,14 @@ describe("timer machine", () => {
     expect(formatClock(0)).toBe("00:00");
   });
 });
+
+import { idleFocus, startFor } from "./machine";
+describe("custom-length runs", () => {
+  it("starts a 5-minute starter and returns to an idle focus phase", () => {
+    const s5 = startFor(initialState(s), s, T0, 5 * MIN);
+    expect(remainingMs(s5, T0)).toBe(5 * MIN);
+    const done = tick(s5, s, T0 + 5 * MIN, "x");
+    expect(done.session?.minutes).toBe(5);
+    expect(idleFocus(done.state, s)).toMatchObject({ phase: "focus", status: "idle", remainingMs: 25 * MIN });
+  });
+});

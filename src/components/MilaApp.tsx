@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { AudioBridge, KeyboardShortcuts, MotionApplier, ThemeApplier } from "./bridges";
+import { AlarmController } from "./AlarmController";
 import { AuthBridge, StudyPlanner } from "./syncBridges";
 import { Hud } from "./chrome/Hud";
 import { SleepOverlay } from "./chrome/SleepOverlay";
@@ -19,6 +20,7 @@ export default function MilaApp() {
       <AudioBridge />
       <TimerController />
       <StudyPlanner />
+      <AlarmController />
       <AuthBridge />
       {/* The canvas is decorative for assistive tech: every object is reachable from the object bar. */}
       <div className="fixed inset-0 z-0" aria-hidden>

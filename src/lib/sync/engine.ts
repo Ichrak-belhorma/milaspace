@@ -8,10 +8,12 @@ import { useAudioStore } from "@/stores/audio";
 import { useAuthStore } from "@/stores/auth";
 import { useNotebookStore } from "@/stores/notebook";
 import { useRoomStore } from "@/stores/room";
+import { useScheduleStore } from "@/stores/schedule";
 import { useStudyStore } from "@/stores/study";
 import { useThemeStore } from "@/stores/theme";
 import { useTimerStore } from "@/stores/timer";
 import { useUiStore } from "@/stores/ui";
+import { isValidAvailability } from "@/study/availability";
 import { safeTheme } from "@/theme/io";
 import { getPreset } from "@/theme/presets";
 import { changesSince, reconcile, type Keyed } from "./reconcile";
@@ -112,7 +114,8 @@ class SetupNeeded extends Error {}
 
 function check<T>(res: { data: T; error: { code?: string; message: string } | null }): T {
   if (res.error) {
-    if (res.error.code === "PGRST205" || res.error.code === "42P01" || /does not exist|Could not find the table/i.test(res.error.message)) {
+    // Missing tables (0001 not run) or missing columns (a newer migration not run yet).
+    if (["PGRST205", "PGRST204", "42P01", "42703"].includes(res.error.code ?? "") || /does not exist|Could not find the table|Could not find the '.+' column/i.test(res.error.message)) {
       throw new SetupNeeded(res.error.message);
     }
     throw new Error(res.error.message);
@@ -147,6 +150,7 @@ function profilePayload() {
       timer: useTimerStore.getState().settings,
       audio: (({ masterVolume, layers, weatherVolume, sfxVolume, music }) => ({ masterVolume, layers, weatherVolume, sfxVolume, musicVolume: music.volume, trackId: music.trackId }))(useAudioStore.getState()),
       motion: useUiStore.getState().motion,
+      schedule: (({ dailyBudget, availability, pace }) => ({ dailyBudget, availability, pace }))(useScheduleStore.getState()),
     },
   };
 }
@@ -170,12 +174,22 @@ function applyProfile(row: { active_theme: unknown; settings: Record<string, unk
       });
     }
     if (settings.motion === "system" || settings.motion === "reduce" || settings.motion === "full") useUiStore.getState().setMotion(settings.motion);
+    const schedule = settings.schedule as Record<string, unknown> | undefined;
+    if (schedule && typeof schedule === "object") {
+      const sc = useScheduleStore.getState();
+      const pace = schedule.pace as { factor?: unknown; samples?: unknown } | undefined;
+      useScheduleStore.setState({
+        dailyBudget: typeof schedule.dailyBudget === "number" ? Math.min(600, Math.max(15, schedule.dailyBudget)) : sc.dailyBudget,
+        availability: isValidAvailability(schedule.availability) ? schedule.availability : sc.availability,
+        pace: pace && typeof pace.factor === "number" && typeof pace.samples === "number" ? { factor: Math.min(2, Math.max(0.6, pace.factor)), samples: pace.samples } : sc.pace,
+      });
+    }
   });
 }
 
 function roomPayload() {
   const r = useRoomStore.getState();
-  return { lamp: r.lamp, window: r.window, curtainsClosed: r.curtainsClosed, drink: r.drink, phone: r.phone, painting: { custom: r.painting.custom } };
+  return { lamp: r.lamp, window: r.window, curtainsClosed: r.curtainsClosed, drink: r.drink, phone: r.phone, buddy: r.buddy, painting: { custom: r.painting.custom } };
 }
 
 async function syncSingletons(db: SupabaseClient, userId: string) {
@@ -244,7 +258,8 @@ async function applyRoom(db: SupabaseClient, room: { state: Record<string, unkno
       window: { ...r.window, ...(s.window as object) },
       curtainsClosed: typeof s.curtainsClosed === "boolean" ? s.curtainsClosed : r.curtainsClosed,
       drink: { ...r.drink, ...(s.drink as object) },
-      phone: { ...r.phone, ...(s.phone as object) },
+      phone: { ...r.phone, ...(s.phone as object), alarm: { ...r.phone.alarm, ...((s.phone as { alarm?: object } | undefined)?.alarm ?? {}) } },
+      buddy: typeof (s.buddy as { visible?: unknown } | undefined)?.visible === "boolean" ? (s.buddy as { visible: boolean }) : r.buddy,
       painting: { custom: Boolean(picture), version: r.painting.version + 1 },
     });
   });
@@ -256,7 +271,7 @@ let running: Promise<void> | null = null;
 
 function fail(e: unknown) {
   const setSync = useAuthStore.getState().setSync;
-  if (e instanceof SetupNeeded) setSync({ state: "setup-needed", message: "Cloud tables aren't set up yet. Run supabase/migrations/0001_init.sql in your Supabase project." });
+  if (e instanceof SetupNeeded) setSync({ state: "setup-needed", message: "Cloud tables aren't up to date. Run the SQL files in supabase/migrations (0001, 0002, 0003) in your Supabase project." });
   else setSync({ state: "error", message: e instanceof Error ? e.message : "Sync failed" });
 }
 

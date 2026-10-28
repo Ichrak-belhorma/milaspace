@@ -3,6 +3,7 @@
 import { useId, useMemo, useState } from "react";
 import { PlusIcon, TrashIcon } from "@/components/icons";
 import { useNow } from "@/hooks/useNow";
+import { postAi, useAiEnabled } from "@/lib/ai/browser";
 import { dueCardsFor, useStudyStore } from "@/stores/study";
 import { previewIntervals, RATINGS, type ReviewRating } from "@/study/fsrs";
 import { leafUnits } from "@/study/tree";
@@ -70,6 +71,53 @@ function ReviewSession({ moduleId }: { moduleId: string | null }) {
   );
 }
 
+function NotesToCards({ moduleId, nodeId, topic }: { moduleId: string; nodeId: string | null; topic?: string }) {
+  const moduleName = useStudyStore((s) => s.modules.find((m) => m.id === moduleId)?.name ?? "");
+  const addCards = useStudyStore((s) => s.addCards);
+  const aiEnabled = useAiEnabled();
+  const [notes, setNotes] = useState("");
+  const [count, setCount] = useState(10);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const id = useId();
+  if (aiEnabled === false) return null;
+
+  const generate = async () => {
+    setBusy(true);
+    setMessage(null);
+    const result = await postAi<{ cards: { front: string; back: string }[] }>("/api/ai/flashcards", { moduleName, topic, sourceText: notes.trim(), count });
+    setBusy(false);
+    if (!result.ok) return setMessage(result.message);
+    const n = addCards(moduleId, result.data.cards, nodeId);
+    setMessage(`Added ${n} card${n === 1 ? "" : "s"}${topic ? ` to ${topic}` : ""}. Delete any you don't want.`);
+    setNotes("");
+  };
+
+  return (
+    <details className="well px-3 py-2">
+      <summary className="cursor-pointer text-sm">Generate cards from my notes</summary>
+      <div className="mt-2 flex flex-col gap-2">
+        <label htmlFor={`${id}-notes`} className="text-sm text-ink-muted">
+          Paste lecture notes or a textbook passage{topic ? ` (cards go under ${topic})` : ""}.
+        </label>
+        <textarea id={`${id}-notes`} className="field h-28 text-sm" value={notes} maxLength={30_000} onChange={(e) => setNotes(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor={`${id}-count`} className="text-sm">
+            How many
+          </label>
+          <input id={`${id}-count`} type="number" min={1} max={50} className="field w-20 py-1 text-sm" value={count} onChange={(e) => setCount(Math.min(50, Math.max(1, Number(e.target.value) || 1)))} />
+          <AiButton label="Generate" busyLabel="Writing cards…" enabled={aiEnabled} busy={busy} disabled={notes.trim().length < 20} onClick={generate} />
+        </div>
+        {message && (
+          <p role="status" className="text-sm">
+            {message}
+          </p>
+        )}
+      </div>
+    </details>
+  );
+}
+
 function CardEditor({ moduleId }: { moduleId: string }) {
   const nodes = useStudyStore((s) => s.nodes);
   const cards = useStudyStore((s) => s.cards);
@@ -122,9 +170,9 @@ function CardEditor({ moduleId }: { moduleId: string }) {
           <button type="submit" className="btn btn-accent text-sm" disabled={!front.trim() || !back.trim()}>
             <PlusIcon size={16} /> Add card
           </button>
-          <AiButton label="Generate from my notes" />
         </div>
       </form>
+      <NotesToCards moduleId={moduleId} nodeId={nodeId || null} topic={units.find((u) => u.nodeId === nodeId)?.title} />
       {mine.length === 0 ? (
         <EmptyState>No cards in this module yet. Short, single-fact questions work best.</EmptyState>
       ) : (

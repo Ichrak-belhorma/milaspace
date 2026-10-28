@@ -5,6 +5,7 @@ import { GlassSurface } from "@/components/glass/GlassSurface";
 import { ChevronLeftIcon, LaptopIcon } from "@/components/icons";
 import { FlashcardsTab } from "@/components/study/FlashcardsTab";
 import { ModulesTab } from "@/components/study/ModulesTab";
+import { ScheduleTab } from "@/components/study/ScheduleTab";
 import { ComingSoon } from "@/components/study/shared";
 import { TodayTab } from "@/components/study/TodayTab";
 import { useUiStore, type StudyTab } from "@/stores/ui";
@@ -12,6 +13,7 @@ import { useUiStore, type StudyTab } from "@/stores/ui";
 const TABS: { id: StudyTab; label: string }[] = [
   { id: "today", label: "Today" },
   { id: "modules", label: "Modules" },
+  { id: "schedule", label: "Schedule" },
   { id: "flashcards", label: "Flashcards" },
   { id: "practice", label: "Practice" },
 ];
@@ -70,6 +72,7 @@ export function StudyView() {
       <div id={`study-panel-${tab}`} role="tabpanel" aria-labelledby={`study-tab-${tab}`} className="min-h-0 flex-1 overflow-y-auto px-5 pb-6">
         {tab === "today" && <TodayTab />}
         {tab === "modules" && <ModulesTab />}
+        {tab === "schedule" && <ScheduleTab />}
         {tab === "flashcards" && <FlashcardsTab />}
         {tab === "practice" && (
           <ComingSoon title="Math and coding practice">

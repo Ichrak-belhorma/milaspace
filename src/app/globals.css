@@ -313,6 +313,14 @@
 .anim-rise {
   animation: mila-rise 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+@keyframes mila-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.anim-pulse {
+  animation: mila-pulse 1.2s ease-in-out infinite;
+}
 
 /* Reduced motion: respect the OS setting unless the user explicitly chose full motion in Mila. */
 @media (prefers-reduced-motion: reduce) {
