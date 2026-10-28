@@ -28,12 +28,12 @@ const POSES: Record<Activity, [number, number, number, number, number, number]> 
 function Arm({ side, shoulder, elbow, sleeve }: { side: 1 | -1; shoulder: RefObject<Group | null>; elbow: RefObject<Group | null>; sleeve: string }) {
   return (
     <group ref={shoulder} position={[side * 0.2, 0.47, 0]}>
-      <mesh position={[0, -0.13, 0]} castShadow>
+      <mesh position={[0, -0.13, 0]}>
         <cylinderGeometry args={[0.048, 0.042, 0.27, 10]} />
         <meshStandardMaterial color={sleeve} roughness={0.95} />
       </mesh>
       <group ref={elbow} position={[0, -0.26, 0]}>
-        <mesh position={[0, -0.12, 0]} castShadow>
+        <mesh position={[0, -0.12, 0]}>
           <cylinderGeometry args={[0.042, 0.036, 0.24, 10]} />
           <meshStandardMaterial color={sleeve} roughness={0.95} />
         </mesh>
@@ -102,24 +102,24 @@ export function StudyBuddy() {
     <group {...bind}>
       {/* Their desk under the window, with a laptop, notebook and mug. */}
       <group position={[dx, 0, dz]}>
-        <RoundedBox args={[1.15, 0.04, 0.55]} radius={0.01} position={[0, 0.73, 0]} castShadow receiveShadow>
+        <RoundedBox args={[1.15, 0.04, 0.55]} radius={0.01} position={[0, 0.73, 0]} receiveShadow>
           <meshStandardMaterial color={c.wood} roughness={0.65} {...highlight(active, glow)} />
         </RoundedBox>
         {[-0.53, 0.53].map((x) =>
           [-0.23, 0.23].map((z) => (
-            <mesh key={`${x}${z}`} position={[x, 0.355, z]} castShadow>
+            <mesh key={`${x}${z}`} position={[x, 0.355, z]}>
               <boxGeometry args={[0.04, 0.71, 0.04]} />
               <meshStandardMaterial color={c.wood} roughness={0.7} />
             </mesh>
           )),
         )}
         <group position={[0.02, 0.75, 0.02]}>
-          <mesh position={[0, 0.008, 0.06]} castShadow>
+          <mesh position={[0, 0.008, 0.06]}>
             <boxGeometry args={[0.34, 0.016, 0.23]} />
             <meshStandardMaterial color={c.metal} metalness={0.5} roughness={0.4} />
           </mesh>
           <group position={[0, 0.016, -0.055]} rotation-x={-0.25}>
-            <mesh position={[0, 0.11, 0]} castShadow>
+            <mesh position={[0, 0.11, 0]}>
               <boxGeometry args={[0.34, 0.22, 0.01]} />
               <meshStandardMaterial color={c.metal} metalness={0.5} roughness={0.4} />
             </mesh>
@@ -130,11 +130,11 @@ export function StudyBuddy() {
           </group>
           <pointLight position={[0, 0.2, 0.25]} color={c.screenGlow} intensity={0.35} distance={1.4} decay={2} />
         </group>
-        <mesh position={[0.36, 0.758, 0.1]} rotation-y={0.3} castShadow>
+        <mesh position={[0.36, 0.758, 0.1]} rotation-y={0.3}>
           <boxGeometry args={[0.16, 0.014, 0.22]} />
           <meshStandardMaterial color={c.paper} roughness={1} />
         </mesh>
-        <mesh position={[-0.38, 0.8, 0.12]} castShadow>
+        <mesh position={[-0.38, 0.8, 0.12]}>
           <cylinderGeometry args={[0.035, 0.032, 0.09, 18]} />
           <meshStandardMaterial color={c.decor} roughness={0.5} />
         </mesh>
@@ -147,11 +147,11 @@ export function StudyBuddy() {
           {/* Legs */}
           {[-0.09, 0.09].map((x) => (
             <group key={x}>
-              <mesh position={[x, 0.02, -0.17]} castShadow>
+              <mesh position={[x, 0.02, -0.17]}>
                 <boxGeometry args={[0.13, 0.12, 0.36]} />
                 <meshStandardMaterial color={FIXED.denim} roughness={0.9} />
               </mesh>
-              <mesh position={[x, -0.22, -0.34]} castShadow>
+              <mesh position={[x, -0.22, -0.34]}>
                 <boxGeometry args={[0.11, 0.46, 0.11]} />
                 <meshStandardMaterial color={FIXED.denim} roughness={0.9} />
               </mesh>
@@ -159,7 +159,7 @@ export function StudyBuddy() {
           ))}
           {/* Torso pivots at the hips so they can lean in or back. */}
           <group ref={torso}>
-            <RoundedBox args={[0.38, 0.5, 0.22]} radius={0.08} position={[0, 0.27, 0]} castShadow>
+            <RoundedBox args={[0.38, 0.5, 0.22]} radius={0.08} position={[0, 0.27, 0]}>
               <meshStandardMaterial color={sweater} roughness={1} {...highlight(active, glow)} />
             </RoundedBox>
             <Arm side={-1} shoulder={sL} elbow={eL} sleeve={sweater} />
@@ -169,15 +169,15 @@ export function StudyBuddy() {
                 <cylinderGeometry args={[0.045, 0.05, 0.08, 10]} />
                 <meshStandardMaterial color={FIXED.skin} roughness={0.8} />
               </mesh>
-              <mesh position={[0, 0.15, 0]} castShadow>
+              <mesh position={[0, 0.15, 0]}>
                 <sphereGeometry args={[0.105, 20, 16]} />
                 <meshStandardMaterial color={FIXED.skin} roughness={0.8} />
               </mesh>
-              <mesh position={[0, 0.18, 0.025]} scale={[1.05, 1, 1.08]} castShadow>
+              <mesh position={[0, 0.18, 0.025]} scale={[1.05, 1, 1.08]}>
                 <sphereGeometry args={[0.108, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.62]} />
                 <meshStandardMaterial color={FIXED.hair} roughness={0.9} />
               </mesh>
-              <mesh position={[0, 0.25, 0.1]} castShadow>
+              <mesh position={[0, 0.25, 0.1]}>
                 <sphereGeometry args={[0.05, 14, 12]} />
                 <meshStandardMaterial color={FIXED.hair} roughness={0.9} />
               </mesh>
